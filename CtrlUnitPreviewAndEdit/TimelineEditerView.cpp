@@ -85,7 +85,7 @@ void TimelineEditerView::OnPaint()
 	//::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 	// プレビューエリア枠線描画
-	m_prcPreviewPanelRect->DrawMyBorderRect(3.0f);
+	m_prcDebugInfoPanelRect->DrawMyBorderRect(3.0f);
 
 
 	// タイムラインヘッダーコントロールパネル描画
@@ -208,6 +208,8 @@ void TimelineEditerView::OnLButtonDown(UINT nFlags, CPoint point)
 				m_clMovingClipData->SetOperatingRect(static_cast<CRect>(m_clMovingClipData));
 				m_rcMousePointRect.CopyRect(static_cast<CRect>(m_clMovingClipData));
 				m_iOperatingClipFrameCount = 0;
+				m_iEnableMovingFrameCount = 0;
+				m_pEnableMovingTrack = nullptr;
 				Invalidate();
 			}
 		}
@@ -345,7 +347,8 @@ void TimelineEditerView::OnLButtonUp(UINT nFlags, CPoint point)
 	{
 		m_clSelectedTrackInfo->DeleteClip(m_clMovingClipData->m_iTimelineInPoint);
 		m_clMovingClipData->m_iTimelineInPoint += m_iOperatingClipFrameCount;
-		m_clOperateToTrackInfo->AddClip(m_clMovingClipData->m_iTimelineInPoint, m_clMovingClipData);
+		(m_pEnableMovingTrack->GetTrackDataInfo())->AddClip(m_clMovingClipData->m_iTimelineInPoint, m_clMovingClipData);
+		//m_clOperateToTrackInfo->AddClip(m_clMovingClipData->m_iTimelineInPoint, m_clMovingClipData);
 		m_clMovingClipData->CopyRect(m_clMovingClipData->GetOperatingRect());
 		//TODO: いずれは復活させないといけない－＞移動中はいいけど静止状態の時にトラックからIn点を持ってくるのが難しい！
 		//m_clMovingClipData->m_iTimelineInPoint = 0;
@@ -389,8 +392,10 @@ void TimelineEditerView::OnLButtonUp(UINT nFlags, CPoint point)
 	m_rcMousePointRect.SetRectEmpty();
 	m_iOperatingFrameCount = 0;
 	m_iOperatingClipFrameCount = 0;
+	m_iEnableMovingFrameCount = 0;
+	m_pEnableMovingTrack = nullptr;
 
-	Invalidate(); // 再描画します。
+	Invalidate();
 
 	m_clMovingClipData = nullptr;
 	m_clStaticClipData = nullptr;
@@ -553,7 +558,7 @@ BOOL TimelineEditerView::Create(LPCTSTR lpszClassName, LPCTSTR lpszWindowName, D
 	m_fScrubing = FALSE;
 	m_fDragShuttling = FALSE;
 
-	m_prcPreviewPanelRect->bottom = m_prcPreviewPanelRect->top + kPreviewPanelDefaltHeight;
+	m_prcDebugInfoPanelRect->bottom = m_prcDebugInfoPanelRect->top + kPreviewPanelDefaltHeight;
 
 	m_iLeftFrameNumber = 0;
 	m_iRightFrameNumber = 0;
@@ -578,7 +583,7 @@ void TimelineEditerView::OnDestroy()
 
 	// TODO: ここにメッセージ ハンドラー コードを追加します。
 
-	DeleteObject(m_prcPreviewPanelRect);
+	DeleteObject(m_prcDebugInfoPanelRect);
 	DeleteObject(m_prcTimelineEditPanelRect);
 	DeleteObject(m_prcTimelineEditHeaderRect);
 	DeleteObject(m_prcTimelineControlPanelRect);
@@ -609,9 +614,6 @@ void TimelineEditerView::DrawSeekBar(const CDC& dcPaintDC, const int iHeight)
 
 	// 背景塗りつぶし
 	m_prcSeekBarRect->DrawMyFillRect();
-
-	//m_prcSeekBarRect->GetWorldPoint(dLeft, dRight, dTop, dBottom);
-	//DrawQuads(dLeft, dRight, dTop, dBottom, 1.0f, SEEKBARBACKGROUNDCOLOR_BRUSH_FLOAT, GL_QUADS);
 
 	int iDrawFrame = m_iLeftFrameNumber + m_iOperatingFrameCount;
 	if (iDrawFrame < 0)
@@ -730,7 +732,7 @@ void TimelineEditerView::DrawSmallScale(const CDC& dcPaintDC, const int iDrawFra
 void TimelineEditerView::DrawTrackHeader(void)
 {
 	// TODO: とりあえず今は枠だけ
-	m_prcTrackHeaderRect->DrawMyBorderRect(1.0f);
+	m_prcTrackHeaderRect->DrawMyBorderRect();
 }
 
 // トラック描画
@@ -739,18 +741,18 @@ void TimelineEditerView::DrawTrack(void)
 	// TODO: とりあえず今は枠だけ　Vectorとかで検索が必要
 	m_clTrack1->GetBottomBorderVert(m_fLineVert);
 	m_clTrack1->GetBottomBorderColor(m_fLineColor);
-	DrawLine(1.0f);
+	DrawLine();
 
 	m_clTrack2->GetBottomBorderVert(m_fLineVert);
 	m_clTrack2->GetBottomBorderColor(m_fLineColor);
-	DrawLine(1.0f);
+	DrawLine();
 }
 
 // タイムラインデータエリア描画
 void TimelineEditerView::DrawTimelineDataRect(void)
 {
 	// TODO: とりあえず今は枠だけ
-	m_prcTimelineDataRect->DrawMyBorderRect(1.0f);
+	m_prcTimelineDataRect->DrawMyBorderRect();
 }
 
 // クリップの描画を行う
@@ -796,14 +798,14 @@ void TimelineEditerView::DrawClipInTrack(TrackDataRect* pTrackDataRect, const in
 					m_prcTransisionRect->right = pClipDataLeft->right;
 					m_prcTransisionRect->SetVert(iHeight);
 					m_prcTransisionRect->DrawMyFillRect();
-					m_prcTransisionRect->DrawMyLeftLine(1.0f);
-					m_prcTransisionRect->DrawMyRightLine(1.0f);
+					m_prcTransisionRect->DrawMyLeftLine();
+					m_prcTransisionRect->DrawMyRightLine();
 					m_prcTransisionRect->SetRectEmpty();
 
 				}
 				else if (pClipData->left == pClipDataLeft->right)
 				{
-					pClipDataLeft->DrawMyRightLine(1.0f);
+					pClipDataLeft->DrawMyRightLine();
 				}
 			}
 			pClipDataLeft = pClipData;
@@ -909,7 +911,7 @@ BOOL TimelineEditerView::DrawOperatingClip(const CDC& dcPaintDC, const int iHeig
 #endif
 
 		// マウス位置追随用
-		if (!(m_rcMousePointRect.EqualRect(rcOperatingRect)))
+		if ((!(m_rcMousePointRect.EqualRect(rcOperatingRect))) /*&& ((m_rcMousePointRect->m_iTimelineInPoint + m_iOperatingClipFrameCount) > 0)*/)
 		{
 			double dLeft, dRight, dTop, dBottom;
 			ChangeScreenRectToOpenGLPoint(m_rcMousePointRect, iHeight, dLeft, dRight, dTop, dBottom);
@@ -1025,13 +1027,13 @@ void TimelineEditerView::SetPanelRect(void)
 	int iTimelineControlPanelDefaultWidth = kTimelineControlPanelDefaultWidth;
 
 	// プレビューエリア配置
-	m_prcPreviewPanelRect->CopyRect(rcViewRect);
-	m_prcPreviewPanelRect->bottom = rcViewRect.top + lViewHeight;
-	m_prcPreviewPanelRect->SetVert(rcViewRect.Height());
+	m_prcDebugInfoPanelRect->CopyRect(rcViewRect);
+	m_prcDebugInfoPanelRect->bottom = rcViewRect.top + lViewHeight;
+	m_prcDebugInfoPanelRect->SetVert(rcViewRect.Height());
 
 	// タイムライン編集エリア配置
 	m_prcTimelineEditPanelRect->CopyRect(rcViewRect);
-	m_prcTimelineEditPanelRect->top = m_prcPreviewPanelRect->bottom + kSplitterHeight;
+	m_prcTimelineEditPanelRect->top = m_prcDebugInfoPanelRect->bottom + kSplitterHeight;
 	m_prcTimelineEditPanelRect->SetVert(rcViewRect.Height());
 
 	// タイムラインヘッダーエリアの配置
@@ -1710,36 +1712,97 @@ BOOL TimelineEditerView::CheckOutTrim(void)
 // 操作がMove可能な範囲内かを判定して位置を調整する
 BOOL TimelineEditerView::CheckMove(CPoint& point)
 {
+	int iMovingClipInFrame, iMovingClipOutFrame, iWorkOperatingClipFrameCount, iDropInPoint = 0;
+	CRect rcWorkRect;
+	ClipDataRect* pClipData;
 	// 範囲チェック
 	if (m_clMovingClipData->m_iTimelineInPoint + m_iOperatingClipFrameCount < 0)
 	{
-		m_iOperatingClipFrameCount = m_clMovingClipData->m_iTimelineInPoint * -1;
-		return FALSE;
+		iWorkOperatingClipFrameCount = m_clMovingClipData->m_iTimelineInPoint * -1;
+		// ワークに操作中の矩形領域をコピー
+		rcWorkRect.CopyRect(m_clMovingClipData->GetOperatingRect());
+		// 仮置きした位置に合わせてワークの矩形を移動する
+		CalcClipRect(rcWorkRect, iDropInPoint, m_clMovingClipData->GetDuration(), m_clOperateToTrack);
+		// 仮置きした場所でクリップと衝突しないかを再判定
+		iMovingClipInFrame = m_clMovingClipData->m_iTimelineInPoint + iWorkOperatingClipFrameCount;
+		iMovingClipOutFrame = m_clMovingClipData->m_iTimelineInPoint + m_clMovingClipData->GetDuration() - 1 + iWorkOperatingClipFrameCount;
+		pClipData = m_clOperateToTrackInfo->CheckMove(m_clMovingClipData, iMovingClipInFrame, iMovingClipOutFrame);
+		if ((pClipData != nullptr) && (pClipData != m_clMovingClipData))
+		{
+			// 重なりがあった場合
+			m_iOperatingClipFrameCount = m_iEnableMovingFrameCount;
+			m_clOperateToTrack = m_pEnableMovingTrack;
+			CalcClipRect(*(m_clMovingClipData->GetOperatingRect()), m_clMovingClipData->m_iTimelineInPoint, m_clMovingClipData->GetDuration(), m_clOperateToTrack);
+			return FALSE;
+		}
+		else
+		{
+			// 重なりがない場合、その場所に配置する
+			m_iOperatingClipFrameCount = m_clMovingClipData->m_iTimelineInPoint * -1;
+			m_iEnableMovingFrameCount = m_iOperatingClipFrameCount;
+			m_pEnableMovingTrack = m_clOperateToTrack;
+			CalcClipRect(*(m_clMovingClipData->GetOperatingRect()), iDropInPoint, m_clMovingClipData->GetDuration(), m_clOperateToTrack);
+			return TRUE;
+		}
 	}
 
 	// 重なりチェック
 	// TODO: 重なった先の再判定が必要（右移動と左移動で分けて考えないとだめそう（チェックＮＧだったら始点に戻っていく）
-	int iMovingClipInFrame = m_clMovingClipData->m_iTimelineInPoint + m_iOperatingClipFrameCount;
-	int iMovingClipOutFrame = m_clMovingClipData->m_iTimelineInPoint + m_clMovingClipData->GetDuration() - 1 + m_iOperatingClipFrameCount;
-	ClipDataRect* pClipData;
+	iMovingClipInFrame = m_clMovingClipData->m_iTimelineInPoint + m_iOperatingClipFrameCount;
+	iMovingClipOutFrame = m_clMovingClipData->m_iTimelineInPoint + m_clMovingClipData->GetDuration() - 1 + m_iOperatingClipFrameCount;
 	pClipData = m_clOperateToTrackInfo->CheckMove(m_clMovingClipData, iMovingClipInFrame, iMovingClipOutFrame);
 	if ((pClipData != nullptr) && (pClipData != m_clMovingClipData))
 	{
+		// 重なりがあった場合
 		int iStaticClipCenterFrame = pClipData->m_iTimelineInPoint + static_cast<int>(floor(pClipData->GetDuration() / 2));
 		int iDropInPoint = 0;
+		// 重なっているクリップの左右に仮配置
 		if (iMovingClipInFrame <= iStaticClipCenterFrame)
 		{
+			// 中心より左の場合、重なっているクリップのIn点-自身のDurationを配置点に仮置き
 			iDropInPoint = pClipData->m_iTimelineInPoint - m_clMovingClipData->GetDuration();
 		}
 		else
 		{
+			// 中心より右の場合、重なっているクリップのOut点を配置点に仮置き
 			iDropInPoint = pClipData->m_iTimelineInPoint + pClipData->GetDuration();
 		}
-		m_iOperatingClipFrameCount = iDropInPoint - m_clMovingClipData->m_iTimelineInPoint;
-		CalcClipRect(*(m_clMovingClipData->GetOperatingRect()), iDropInPoint, m_clMovingClipData->GetDuration(), m_clOperateToTrack);
+		// 仮置きしたポイントへの移動量を算出
+		iWorkOperatingClipFrameCount = iDropInPoint - m_clMovingClipData->m_iTimelineInPoint;
+		// 移動の結果In点が0未満になる場合は移動しない
+		if (m_clMovingClipData->m_iTimelineInPoint + iWorkOperatingClipFrameCount > 0)
+		{
+			// ワークに操作中の矩形領域をコピー
+			rcWorkRect.CopyRect(m_clMovingClipData->GetOperatingRect());
+			// 仮置きした位置に合わせてワークの矩形を移動する
+			CalcClipRect(rcWorkRect, iDropInPoint, m_clMovingClipData->GetDuration(), m_clOperateToTrack);
+			// 仮置きした場所でクリップと衝突しないかを再判定
+			iMovingClipInFrame = m_clMovingClipData->m_iTimelineInPoint + iWorkOperatingClipFrameCount;
+			iMovingClipOutFrame = m_clMovingClipData->m_iTimelineInPoint + m_clMovingClipData->GetDuration() - 1 + iWorkOperatingClipFrameCount;
+			pClipData = m_clOperateToTrackInfo->CheckMove(m_clMovingClipData, iMovingClipInFrame, iMovingClipOutFrame);
+			if ((pClipData != nullptr) && (pClipData != m_clMovingClipData))
+			{
+				// 重なりがあった場合
+			}
+			else
+			{
+				// 重なりがない場合、その場所に配置する
+				m_iOperatingClipFrameCount = iDropInPoint - m_clMovingClipData->m_iTimelineInPoint;
+				m_iEnableMovingFrameCount = m_iOperatingClipFrameCount;
+				m_pEnableMovingTrack = m_clOperateToTrack;
+				CalcClipRect(*(m_clMovingClipData->GetOperatingRect()), iDropInPoint, m_clMovingClipData->GetDuration(), m_clOperateToTrack);
+			}
+		}
+		// 移動先が配置できない場合、前回移動可能だった場所に戻す。
+		m_iOperatingClipFrameCount = m_iEnableMovingFrameCount;
+		m_clOperateToTrack = m_pEnableMovingTrack;
+		CalcClipRect(*(m_clMovingClipData->GetOperatingRect()), m_clMovingClipData->m_iTimelineInPoint, m_clMovingClipData->GetDuration(), m_clOperateToTrack);
 		return FALSE;
 	}
 
+
+	m_iEnableMovingFrameCount = m_iOperatingClipFrameCount;
+	m_pEnableMovingTrack = m_clOperateToTrack;
 	CalcClipRectDisplayPoint(*(m_clMovingClipData->GetOperatingRect()), m_clMovingClipData, m_clOperateToTrack, m_iOperatingClipFrameCount);
 	return TRUE;
 }
@@ -1755,9 +1818,9 @@ BOOL TimelineEditerView::CheckMove(CPoint& point)
 void TimelineEditerView::InitAreaRect(void)
 {
 	// TODO: 色は後で定数を作る
-	m_prcPreviewPanelRect = new OpenGLRect();
-	m_prcPreviewPanelRect->SetRectEmpty();
-	m_prcPreviewPanelRect->SetBothColor(ACCENTCOLOR3_BRUSH_FLOAT, WHITECOLOR_BRUSH_FLOAT, ACCENTCOLOR3_BRUSH_FLOAT, WHITECOLOR_BRUSH_FLOAT);
+	m_prcDebugInfoPanelRect = new OpenGLRect();
+	m_prcDebugInfoPanelRect->SetRectEmpty();
+	m_prcDebugInfoPanelRect->SetBothColor(ACCENTCOLOR3_BRUSH_FLOAT, WHITECOLOR_BRUSH_FLOAT, ACCENTCOLOR3_BRUSH_FLOAT, WHITECOLOR_BRUSH_FLOAT);
 
 	m_prcTimelineEditPanelRect = new OpenGLRect();
 	m_prcTimelineEditPanelRect->SetRectEmpty();

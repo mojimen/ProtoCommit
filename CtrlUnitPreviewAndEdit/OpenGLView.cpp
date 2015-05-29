@@ -146,7 +146,7 @@ void OpenGLView::OnDestroy()
 
 	if (m_hRC)
 	{
-		delete m_hRC;
+		//delete m_hRC;
 	}
 	if (m_pDC)
 	{
@@ -323,7 +323,7 @@ void OpenGLView::DrawRect(const float& fLineWidth, const float& fRed, const floa
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void OpenGLView::DrawRect(const float& fLineWidth, GLenum glMode /* = GL_LINE_LOOP */)
+void OpenGLView::DrawRect(const float& fLineWidth /*= 1.0f*/, GLenum glMode /* = GL_LINE_LOOP */)
 {
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_COLOR_ARRAY);
@@ -353,7 +353,7 @@ void OpenGLView::DrawLine(const int& iWindowHeight, const int& iFromX, const int
 	glEnd();
 }
 
-void OpenGLView::DrawLine(const float& fLineWidth)
+void OpenGLView::DrawLine(const float& fLineWidth /*= 1.0f*/)
 {
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_COLOR_ARRAY);

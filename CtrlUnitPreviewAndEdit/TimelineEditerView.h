@@ -170,7 +170,7 @@ private:
 
 	//表示情報
 private:
-	OpenGLRect* m_prcPreviewPanelRect;
+	OpenGLRect* m_prcDebugInfoPanelRect;
 	OpenGLRect* m_prcTimelineEditPanelRect;
 	OpenGLRect* m_prcTimelineEditHeaderRect;
 	OpenGLRect* m_prcTimelineControlPanelRect;
@@ -184,6 +184,8 @@ private:
 	int m_iLeftFrameNumber;				// タイムラインデータ表示範囲の先頭フレーム
 	int m_iRightFrameNumber;			// タイムラインデータ表示範囲の最終フレーム
 	int m_iOperatingFrameCount;			// 操作中の移動フレーム数
+	int m_iEnableMovingFrameCount;		// Move操作中に移動が可能であった直近の移動フレーム数
+	TrackDataRect* m_pEnableMovingTrack;// Move操作中に移動が可能であった直近のトラック位置
 	int m_iOperatingTimelineCursorFramePosition;	// タイムラインカーソル位置のフレーム番号
 	int m_iOperatingLeftFrameNumber;	// タイムラインデータ表示範囲の先頭フレーム
 	int m_iOperatingRightFrameNumber;	// タイムラインデータ表示範囲の最終フレーム

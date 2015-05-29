@@ -48,10 +48,10 @@ protected:
 	void DrawRect(const double& dLeft, const double& dRight, const double& dTop, const double& dBottom, const float& fLineWidth,
 		const float& fRed, const float& fGreen, const float& fBlue, const float& fAlpha, GLenum glMode = GL_LINE_LOOP);
 	void DrawRect(const float& fLineWidth, const float& fRed, const float& fGreen, const float& fBlue, const float& fAlpha, GLenum glMode = GL_LINE_LOOP);
-	void DrawRect(const float& fLineWidth, GLenum glMode = GL_LINE_LOOP);
+	void DrawRect(const float& fLineWidth = 1.0f, GLenum glMode = GL_LINE_LOOP);
 	void DrawLine(const int& iWindowHeight, const int& dFromX, const int& dFromY, const int& dToX, const int& dToY, const float& fLineWidth,
 		const float& fRed, const float& fGreen, const float& fBlue, const float& fAlpha);
-	void DrawLine(const float& fLineWidth);
+	void DrawLine(const float& fLineWidth = 1.0f);
 
 	virtual BOOL SetupPixelFormat();
 	virtual BOOL InitGLContext();

@@ -30,7 +30,7 @@ protected:
 		const float fR4, const float fG4, const float fB4, const float fA4, float(&fColor)[4][4]);
 	void CopyColor(const float(&fOriginalColor)[4][4], float(&fColor)[4][4]);
 
-	void DrawMyRect(const float& fLineWidth, GLenum glMode = GL_LINE_LOOP);
+	void DrawMyRect(const float& fLineWidth = 1.0f, GLenum glMode = GL_LINE_LOOP);
 	void DrawMyLine(void);
 
 
@@ -74,12 +74,12 @@ public:
 		const float fR4, const float fG4, const float fB4, const float fA4);
 
 	void DrawMyFillRect(void);
-	void DrawMyBorderRect(const float& fLineWidth);
-	void DrawMyBothRect(const float& fLineWidth);
-	void DrawMyLeftLine(const float& fLineWidth);
-	void DrawMyTopLine(const float& fLineWidth);
-	void DrawMyRightLine(const float& fLineWidth);
-	void DrawMyBottomLine(const float& fLineWidth);
+	void DrawMyBorderRect(const float& fLineWidth = 1.0f);
+	void DrawMyBothRect(const float& fLineWidth = 1.0f);
+	void DrawMyLeftLine(const float& fLineWidth = 1.0f);
+	void DrawMyTopLine(const float& fLineWidth = 1.0f);
+	void DrawMyRightLine(const float& fLineWidth = 1.0f);
+	void DrawMyBottomLine(const float& fLineWidth = 1.0f);
 
 };
 

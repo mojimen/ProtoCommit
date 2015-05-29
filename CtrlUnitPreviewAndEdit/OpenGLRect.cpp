@@ -255,7 +255,7 @@ void OpenGLRect::SetBothColor(const float fR1, const float fG1, const float fB1,
 	return;
 }
 
-void OpenGLRect::DrawMyRect(const float& fLineWidth, GLenum glMode /*= GL_LINE_LOOP*/)
+void OpenGLRect::DrawMyRect(const float& fLineWidth /*= 1.0f*/, GLenum glMode /*= GL_LINE_LOOP*/)
 {
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_COLOR_ARRAY);
@@ -274,13 +274,13 @@ void OpenGLRect::DrawMyFillRect(void)
 	GetColor(m_fRectColor);
 	DrawMyRect(1.0f, GL_QUADS);
 }
-void OpenGLRect::DrawMyBorderRect(const float& fLineWidth)
+void OpenGLRect::DrawMyBorderRect(const float& fLineWidth /*= 1.0f*/)
 {
 	GetBorderVert(m_fRectVert);
 	GetBorderColor(m_fRectColor);
 	DrawMyRect(fLineWidth);
 }
-void OpenGLRect::DrawMyBothRect(const float& fLineWidth)
+void OpenGLRect::DrawMyBothRect(const float& fLineWidth /*= 1.0f*/)
 {
 	GetVert(m_fRectVert);
 	GetColor(m_fRectColor);
@@ -304,7 +304,7 @@ void OpenGLRect::DrawMyLine(void)
 	glDisableClientState(GL_COLOR_ARRAY);
 }
 
-void OpenGLRect::DrawMyLeftLine(const float& fLineWidth)
+void OpenGLRect::DrawMyLeftLine(const float& fLineWidth /*= 1.0f*/)
 {
 	GetLeftBorderVert(m_fLineVert);
 	GetLeftBorderColor(m_fLineColor);
@@ -312,7 +312,7 @@ void OpenGLRect::DrawMyLeftLine(const float& fLineWidth)
 	DrawMyLine();
 }
 
-void OpenGLRect::DrawMyTopLine(const float& fLineWidth)
+void OpenGLRect::DrawMyTopLine(const float& fLineWidth /*= 1.0f*/)
 {
 	GetTopBorderVert(m_fLineVert);
 	GetTopBorderColor(m_fLineColor);
@@ -320,7 +320,7 @@ void OpenGLRect::DrawMyTopLine(const float& fLineWidth)
 	DrawMyLine();
 }
 
-void OpenGLRect::DrawMyRightLine(const float& fLineWidth)
+void OpenGLRect::DrawMyRightLine(const float& fLineWidth /*= 1.0f*/)
 {
 	GetRightBorderVert(m_fLineVert);
 	GetRightBorderColor(m_fLineColor);
@@ -328,7 +328,7 @@ void OpenGLRect::DrawMyRightLine(const float& fLineWidth)
 	DrawMyLine();
 }
 
-void OpenGLRect::DrawMyBottomLine(const float& fLineWidth)
+void OpenGLRect::DrawMyBottomLine(const float& fLineWidth /*= 1.0f*/)
 {
 	GetBottomBorderVert(m_fLineVert);
 	GetBottomBorderColor(m_fLineColor);
