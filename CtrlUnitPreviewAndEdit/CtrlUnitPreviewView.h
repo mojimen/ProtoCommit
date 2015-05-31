@@ -52,6 +52,14 @@ public:
 	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
 	virtual void OnInitialUpdate();
 	afx_msg void OnPaint();
+	//afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
+	//// スクリーン表示サイズの切り替え
+	//BOOL ChangeScreenSize();
+private:
+	BOOL m_fFullScrenn;
+	BOOL m_fMaximized;
+	CRect m_rcWindowSize;
+	//CREATESTRUCT& m_csMainWindow;
 };
 
 #ifndef _DEBUG  // CtrlUnitPreviewView.cpp のデバッグ バージョン

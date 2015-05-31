@@ -14,6 +14,8 @@
 
 #include "TimelineEditerDialog.h"
 
+#include "MainFrm.h"
+
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -29,11 +31,13 @@ BEGIN_MESSAGE_MAP(CCtrlUnitPreviewView, OpenGLView)
 	ON_WM_DESTROY()
 	ON_WM_RBUTTONUP()
 	ON_WM_PAINT()
+	ON_WM_LBUTTONDBLCLK()
 END_MESSAGE_MAP()
 
 // CCtrlUnitPreviewView コンストラクション/デストラクション
 
 CCtrlUnitPreviewView::CCtrlUnitPreviewView()
+	: m_fFullScrenn(false)
 {
 	// TODO: 構築コードをここに追加します。
 
@@ -178,3 +182,39 @@ void CCtrlUnitPreviewView::OnPaint()
 
 
 
+
+
+//void CCtrlUnitPreviewView::OnLButtonDblClk(UINT nFlags, CPoint point)
+//{
+//	// TODO: ここにメッセージ ハンドラー コードを追加するか、既定の処理を呼び出します。
+//
+//	//ChangeScreenSize();
+//	CWnd* pParentWnd = GetParent();
+//	CMDIFrameWndEx *pMdiFrame = (CMDIFrameWndEx *)AfxGetMainWnd();
+//	pMdiFrame->ShowFullScreen();
+//
+//	OpenGLView::OnLButtonDblClk(nFlags, point);
+//}
+//
+//
+//
+//// スクリーン表示サイズの切り替え
+//BOOL CCtrlUnitPreviewView::ChangeScreenSize()
+//{
+//	if (m_fFullScrenn)
+//	{
+//		m_fFullScrenn = FALSE;
+//
+//	}
+//	else
+//	{
+//		CWnd* pParentWnd = GetParent();
+//		pParentWnd->GetWindowRect(&m_rcWindowSize);
+//		SetWindowLong((HWND)pParentWnd, GWL_STYLE, WS_POPUP);
+//		AfxGetMainWnd()->PostMessage(WM_SYSCOMMAND, SC_MAXIMIZE);
+//		this->MoveWindow(m_rcWindowSize);
+//		m_fFullScrenn = TRUE;
+//	}	
+//
+//	return false;
+//}
