@@ -10,6 +10,7 @@
 
 ClipDataRect::ClipDataRect()
 {
+	m_eClipDataRectTag = CLIPDATARECT;
 }
 
 ClipDataRect::~ClipDataRect()
@@ -231,4 +232,5 @@ void ClipDataRect::DrawOverlappingRect(int iHeight)
 	GetOverlappingColor(m_fRectColor);
 	DrawMyRect(1.0f, GL_QUADS);
 }
+
 

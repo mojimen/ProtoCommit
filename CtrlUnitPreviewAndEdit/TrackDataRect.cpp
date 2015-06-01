@@ -4,13 +4,15 @@
 #include "stdafx.h"
 #include "CtrlUnitPreviewAndEdit.h"
 #include "TrackDataRect.h"
-//#include "ClipDataRect.h"
+#include "TrackDataManager.h"
 
 
 // TrackDataRect
 
 TrackDataRect::TrackDataRect()
 {
+	m_eTrackDataRectTag = TRACKDATARECT;
+	m_iHeight = TRACK_HIEGHT_DEFAULT;
 }
 
 TrackDataRect::~TrackDataRect()

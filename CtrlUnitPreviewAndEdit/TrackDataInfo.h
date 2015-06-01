@@ -5,12 +5,14 @@
 #include <rpc.h>
 #pragma comment(lib ,"rpcrt4.lib")
 
+#include "TrackDataManager.h"
+
 class ClipDataRect;
 
 // TrackDataInfo コマンド ターゲット
 
-typedef std::map<int, ClipDataRect*> ClipDataInfoMap;	//InPoint,ClipId 
-//typedef std::map<int, UUID> ClipDataInfoMap;	//InPoint,ClipId 
+typedef std::map<int, ClipDataRect*> ClipDataPositionMap;	//InPoint,ClipDataPointer 
+//typedef std::map<int, UUID> ClipDataPositionMap;	//InPoint,ClipId 
 
 class TrackDataInfo : public CObject
 {
@@ -18,8 +20,6 @@ public:
 	TrackDataInfo();
 	virtual ~TrackDataInfo();
 
-	// TODO: これはトラックマネージャーに！
-	enum TrackDataTag{ TRACKDATATAG_INFO };
 	enum TrackKind {
 		VIDEO,
 		AUDIO,
@@ -35,7 +35,7 @@ private:
 	TrackKind m_eTrackKind;
 	UUID m_uiInputChannel;
 	UUID m_uiOutputChannel;
-	ClipDataInfoMap m_mpClipDataInfoMap;
+	ClipDataPositionMap m_mpClipDataInfoMap;
 
 	// 再生時参照項目
 	BOOL m_fSolo;
@@ -57,9 +57,9 @@ public:
 	void ChangeClip(const int iOldInPoint, const int iNewInPoint, ClipDataRect* pClipData);
 
 	// Getter
-	ClipDataRect* GetClipDataInfo(int iFrame, int& iInPoint);
-	int GetClipDataAtFrame(int iFrame, ClipDataInfoMap& mpClipMap);
-	int GetClipDataInRange(int iStartFrame, int iEndFrame, ClipDataInfoMap& mpClipMap);
+	ClipDataRect* GetClipDataInfo(const int iFrame, int& iInPoint);
+	int GetClipDataAtFrame(const int iFrame, ClipDataPositionMap& mpClipMap);
+	int GetClipDataInRange(const int iStartFrame, const int iEndFrame, ClipDataPositionMap& mpClipMap);
 	//UUID GetTrackRectId(void) { return m_uiTrackRectId; }
 	//TrackDataRect* GetTrackDataRect(void) { return m_pTrackDataRect; }
 

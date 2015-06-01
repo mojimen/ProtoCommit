@@ -188,14 +188,6 @@ void OpenGLView::OnSize(UINT nType, int cx, int cy)
 		::glGetDoublev(GL_PROJECTION_MATRIX, m_dProjection);
 		::glGetDoublev(GL_MODELVIEW_MATRIX, m_dModelview);
 		::wglMakeCurrent(NULL, NULL);
-
-		CString str;
-		str.Format(_T("Veiw L%d,T%d,R%d,B%d\n"), m_iViewport[0], m_iViewport[1], m_iViewport[2], m_iViewport[3]);
-		OutputDebugString(str);
-		CRect rcRect;
-		GetClientRect(&rcRect);
-		str.Format(_T("Rect L%d,T%d,R%d,B%d\n"), rcRect.left, rcRect.top, rcRect.right, rcRect.bottom);
-		OutputDebugString(str);
 	}
 
 }

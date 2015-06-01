@@ -7,6 +7,8 @@ class OpenGLRect;
 class ClipDataRect;
 class TrackDataInfo;
 class TrackDataRect;
+class TrackDataManager;
+class ClipDataManager;
 
 typedef std::map<int, int> DisplayScaleMap;
 
@@ -215,20 +217,19 @@ private:
 	int ChangeDisplayPointToTimelineFramePosition(const CPoint& point, int& iActualFrame);
 	int ChangeOperatingDistanceToTimelineFrames(const CSize& szMoveSize, const int iStartFrame = 0);
 
-	// 仮想クリップ
-	ClipDataRect* m_clClipData1;
-	ClipDataRect* m_clClipData2;
+	// 操作中クリップへのポインタ
 	ClipDataRect* m_clMovingClipData;
-	ClipDataRect* m_clStaticClipData;
-	// 仮想トラック
-	TrackDataRect* m_clTrack1;
-	TrackDataRect* m_clTrack2;
-	TrackDataInfo* m_clTrackInfo1;
-	TrackDataInfo* m_clTrackInfo2;
-	TrackDataRect* m_clSelectedTrack;
-	TrackDataRect* m_clOperateToTrack;
+
+	// TODO: 操作中トラックへのポインタ			複数選択時の考慮が必要
+	TrackDataRect* m_clSelectedTrack;		// 選択したクリップのあったトラック
 	TrackDataInfo* m_clSelectedTrackInfo;
+	TrackDataRect* m_clOperateToTrack;		// 移動先トラック
 	TrackDataInfo* m_clOperateToTrackInfo;
+
+	// 仮置き・マネージャー
+	ClipDataManager* m_pClipDataManager;
+	TrackDataManager* m_pTrackDataManager;
+
 
 	// 図形ドラッグ用
 private:

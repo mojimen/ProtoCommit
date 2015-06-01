@@ -11,6 +11,7 @@
 
 TrackDataInfo::TrackDataInfo()
 {
+	m_eTrackDataInfoTag = TRACKDATAINFO;
 }
 
 TrackDataInfo::~TrackDataInfo()
@@ -38,13 +39,15 @@ BOOL TrackDataInfo::InitializeTrackId(UUID& uiClipId)
 	}
 }
 
-ClipDataRect* TrackDataInfo::GetClipDataInfo(int iFrame, int& iInPoint)
+ClipDataRect* TrackDataInfo::GetClipDataInfo(const int iFrame, int& iInPoint)
 {
+	assert(iFrame >= 0);
+
 	if (m_mpClipDataInfoMap.size() == 0)
 	{
 		return nullptr;
 	}
-	ClipDataInfoMap::iterator itr = m_mpClipDataInfoMap.upper_bound(iFrame);
+	ClipDataPositionMap::iterator itr = m_mpClipDataInfoMap.upper_bound(iFrame);
 	if (itr == m_mpClipDataInfoMap.begin())
 	{
 		return nullptr;
@@ -64,14 +67,16 @@ ClipDataRect* TrackDataInfo::GetClipDataInfo(int iFrame, int& iInPoint)
 }
 
 // 入力のフレームに存在するクリップを取得
-int TrackDataInfo::GetClipDataAtFrame(int iFrame, ClipDataInfoMap& mpClipMap)
+int TrackDataInfo::GetClipDataAtFrame(const int iFrame, ClipDataPositionMap& mpClipMap)
 {
+	assert(iFrame >= 0);
+
 	int iSize = 0;
 	if (m_mpClipDataInfoMap.size() == 0)
 	{
 		return iSize;
 	}
-	ClipDataInfoMap::iterator itr = m_mpClipDataInfoMap.upper_bound(iFrame);
+	ClipDataPositionMap::iterator itr = m_mpClipDataInfoMap.upper_bound(iFrame);
 	if (itr == m_mpClipDataInfoMap.begin())
 	{
 		return 0;
@@ -101,15 +106,18 @@ int TrackDataInfo::GetClipDataAtFrame(int iFrame, ClipDataInfoMap& mpClipMap)
 }
 
 // 入力のフレーム範囲に存在するクリップを取得
-int TrackDataInfo::GetClipDataInRange(int iStartFrame, int iEndFrame, ClipDataInfoMap& mpClipMap)
+int TrackDataInfo::GetClipDataInRange(const int iStartFrame, const int iEndFrame, ClipDataPositionMap& mpClipMap)
 {
+	assert(iStartFrame >= 0);
+	assert(iEndFrame >= iStartFrame);
+
 	int iSize = 0;
 	if (m_mpClipDataInfoMap.size() == 0)
 	{
 		return iSize;
 	}
 	ClipDataRect* pClipData;
-	ClipDataInfoMap::iterator itr = m_mpClipDataInfoMap.upper_bound(iStartFrame);
+	ClipDataPositionMap::iterator itr = m_mpClipDataInfoMap.upper_bound(iStartFrame);
 	if (itr != m_mpClipDataInfoMap.begin())
 	{
 		--itr;
@@ -169,7 +177,7 @@ int TrackDataInfo::CheckClipInSingleOutTrimRange(int iStartFrame, int iEndFrame)
 	{
 		return iEndFrame;
 	}
-	ClipDataInfoMap::iterator itr = m_mpClipDataInfoMap.upper_bound(iStartFrame);
+	ClipDataPositionMap::iterator itr = m_mpClipDataInfoMap.upper_bound(iStartFrame);
 	if (itr != m_mpClipDataInfoMap.end())
 	{
 		if ((*itr).first <= iEndFrame)
@@ -187,7 +195,7 @@ int TrackDataInfo::CheckClipInSingleInTrimRange(int iStartFrame, int iEndFrame)
 	{
 		return iEndFrame;
 	}
-	ClipDataInfoMap::iterator itr = m_mpClipDataInfoMap.lower_bound(iStartFrame);
+	ClipDataPositionMap::iterator itr = m_mpClipDataInfoMap.lower_bound(iStartFrame);
 	if (itr != m_mpClipDataInfoMap.begin())
 	{
 		--itr;
@@ -220,7 +228,7 @@ ClipDataRect* TrackDataInfo::CheckMove(ClipDataRect* pCheckClipData, const int i
 	// 移動中のクリップに含まれるクリップがないかをチェック
 
 
-	ClipDataInfoMap::iterator itr = m_mpClipDataInfoMap.upper_bound(iInPoint);
+	ClipDataPositionMap::iterator itr = m_mpClipDataInfoMap.upper_bound(iInPoint);
 	if (itr == m_mpClipDataInfoMap.end())
 	{
 		return nullptr;

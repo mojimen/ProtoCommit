@@ -6,6 +6,7 @@
 #pragma comment(lib ,"rpcrt4.lib")
 
 #include "OpenGLRect.h"
+#include "ClipDataManager.h"
 
 // TODO: デバッグ用
 #include <random>
@@ -55,14 +56,6 @@
 
 // ClipDataRect コマンド ターゲット
 
-struct FilterInfo
-{
-	int iOutPoint;
-	int iDuration;
-	UUID uiFilterId;
-};
-
-
 class ClipDataRect : public OpenGLRect
 {
 
@@ -70,23 +63,10 @@ public:
 	ClipDataRect();
 	virtual ~ClipDataRect();
 
-
-	enum ClipDataTag{ CLIPDATARECT };
-	enum ClipKind {
-		VIDEO,
-		AUDIO,
-		TITLE,
-		MASTER_VIDEO,
-		MASTER_AUDIO
-	};
-
 private:
 	ClipDataTag m_eClipDataRectTag;
 	UUID m_uiClipRectId;
 	ClipKind m_eClipKind;
-	//UUID m_uiFileId;
-	//int m_iInPoint;
-	//int m_iOutPoint;
 	int m_iDuration;
 	//int m_iInOffset;
 	//UUID m_uiMetaInfoId;
@@ -107,8 +87,12 @@ private:
 	float m_fOverlappingColor[4][4];	// 全クリップ共通。コントローラーで設定すべき？
 	float m_fSingleTrimBorderColor[4][4];	// 全クリップ共通。コントローラーで設定すべき？
 
+	// データとのリンク項目
+	UUID m_uiClipId;
+	ClipDataInfo* m_pClipDataInfo;
+
 	// For ProtoType
-	//CString strFilePath;
+
 
 public:
 	// TODO: private化
@@ -159,6 +143,8 @@ public:
 		const float fR2, const float fG2, const float fB2, const float fA2,
 		const float fR3, const float fG3, const float fB3, const float fA3,
 		const float fR4, const float fG4, const float fB4, const float fA4);
+	void SetClipDataInfo(const UUID& uiClipId, ClipDataInfo* pClipDataInfo) { m_pClipDataInfo = pClipDataInfo; m_uiClipId = uiClipId; }
+
 
 	// Getter
 	ClipDataTag GetTag(void) { return m_eClipDataRectTag; }

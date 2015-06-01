@@ -10,6 +10,7 @@
 
 ClipDataInfo::ClipDataInfo()
 {
+	m_eClipDataInfoTag = CLIPDATAINFO;
 }
 
 ClipDataInfo::~ClipDataInfo()

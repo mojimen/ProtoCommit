@@ -5,6 +5,8 @@
 // TODO: デバッグ用
 #include <random>
 
+#include "ClipDataManager.h"
+
 
 // ClipDataInfo コマンド ターゲット
 
@@ -20,15 +22,6 @@ class ClipDataInfo : public CObject
 public:
 	ClipDataInfo();
 	virtual ~ClipDataInfo();
-
-	enum ClipDataTag{ CLIPDATAINFO };
-	enum ClipKind {
-		VIDEO,
-		AUDIO,
-		TITLE,
-		MASTER_VIDEO,
-		MASTER_AUDIO
-	};
 
 private:
 	ClipDataTag m_eClipDataInfoTag;

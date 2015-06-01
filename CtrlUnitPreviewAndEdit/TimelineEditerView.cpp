@@ -9,6 +9,7 @@
 #include "ClipDataRect.h"
 #include "TrackDataRect.h"
 #include "TrackDataInfo.h"
+#include "TrackDataManager.h"
 //#include "math.h"
 
 #include <map>
@@ -145,26 +146,6 @@ void TimelineEditerView::OnPaint()
 
 	strFrameNumber.Format(_T("CursorLine Point %d"), m_iTimelineCursorPoint);
 	ChangeScreenPointToOpenGLPoint(5, 75, iHeight, dPointX, dPointY);
-	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dc.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
-		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
-
-	strFrameNumber.Format(_T("Cip1 Rect Point L %d T %d"), m_clClipData1->left, m_clClipData1->top);
-	ChangeScreenPointToOpenGLPoint(5, 90, iHeight, dPointX, dPointY);
-	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dc.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
-		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
-
-	strFrameNumber.Format(_T("                R %d B %d"), m_clClipData1->right, m_clClipData1->bottom);
-	ChangeScreenPointToOpenGLPoint(5, 105, iHeight, dPointX, dPointY);
-	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dc.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
-		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
-
-	strFrameNumber.Format(_T("Cip2 Rect Point L %d T %d"), m_clClipData2->left, m_clClipData2->top);
-	ChangeScreenPointToOpenGLPoint(5, 120, iHeight, dPointX, dPointY);
-	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dc.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
-		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
-
-	strFrameNumber.Format(_T("                R %d B %d"), m_clClipData2->right, m_clClipData2->bottom);
-	ChangeScreenPointToOpenGLPoint(5, 135, iHeight, dPointX, dPointY);
 	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dc.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 
@@ -398,7 +379,6 @@ void TimelineEditerView::OnLButtonUp(UINT nFlags, CPoint point)
 	Invalidate();
 
 	m_clMovingClipData = nullptr;
-	m_clStaticClipData = nullptr;
 	m_fMoving = FALSE;
 	m_fSingleInTriming = FALSE;
 	m_fSingleOutTriming = FALSE;
@@ -738,14 +718,12 @@ void TimelineEditerView::DrawTrackHeader(void)
 // トラック描画
 void TimelineEditerView::DrawTrack(void)
 {
-	// TODO: とりあえず今は枠だけ　Vectorとかで検索が必要
-	m_clTrack1->GetBottomBorderVert(m_fLineVert);
-	m_clTrack1->GetBottomBorderColor(m_fLineColor);
-	DrawLine();
-
-	m_clTrack2->GetBottomBorderVert(m_fLineVert);
-	m_clTrack2->GetBottomBorderColor(m_fLineColor);
-	DrawLine();
+	// TODO: とりあえず今は枠だけ
+	TrackDataRectList* pTrackDataRectList = m_pTrackDataManager->GetTrackDataRectList();
+	for (int i = 0; i < m_pTrackDataManager->GetTrackCount(); ++i)
+	{
+		m_pTrackDataManager->GetTrackDataRect(pTrackDataRectList->at(i))->DrawMyBottomLine();
+	}
 }
 
 // タイムラインデータエリア描画
@@ -758,11 +736,11 @@ void TimelineEditerView::DrawTimelineDataRect(void)
 // クリップの描画を行う
 BOOL TimelineEditerView::DrawClip(const int iHeight)
 {
-	//TODO: vectorとかにトラックを押し込んで反復させる
-	TrackDataRect* pTrackDataRect = m_clTrack1;
-	DrawClipInTrack(pTrackDataRect, iHeight);
-	pTrackDataRect = m_clTrack2;
-	DrawClipInTrack(pTrackDataRect, iHeight);
+	TrackDataRectList* pTrackDataRectList = m_pTrackDataManager->GetTrackDataRectList();
+	for (int i = 0; i < m_pTrackDataManager->GetTrackCount(); ++i)
+	{
+		DrawClipInTrack(m_pTrackDataManager->GetTrackDataRect(pTrackDataRectList->at(i)), iHeight);
+	}
 
 	return TRUE;
 }
@@ -775,14 +753,14 @@ void TimelineEditerView::DrawClipInTrack(TrackDataRect* pTrackDataRect, const in
 	{
 		iStartFrame = 0;
 	}
-	ClipDataInfoMap mpClipDataMap;
+	ClipDataPositionMap mpClipDataMap;
 	int iClipCount = pTrackDataRect->GetTrackDataInfo()->GetClipDataInRange(iStartFrame, m_iRightFrameNumber + m_iOperatingFrameCount, mpClipDataMap);
 	ClipDataRect* pClipData;
 	ClipDataRect* pClipDataLeft;
 	pClipDataLeft = nullptr;
 	if (iClipCount > 0)
 	{
-		ClipDataInfoMap::iterator itr = mpClipDataMap.begin();
+		ClipDataPositionMap::iterator itr = mpClipDataMap.begin();
 		while (itr != mpClipDataMap.end())
 		{
 			pClipData = (*itr).second;
@@ -1070,16 +1048,22 @@ void TimelineEditerView::SetPanelRect(void)
 	m_prcTimelineCursorHitArea->right = m_iTimelineCursorPoint + kTimelineCursorDragArea;
 	m_prcTimelineCursorHitArea->SetVert(rcViewRect.Height());
 
-	// トラック領域の配置
-	m_clTrack1->CopyRect(m_prcTimelineEditPanelRect);
-	m_clTrack1->top = m_prcTrackHeaderRect->top;
-	m_clTrack1->bottom = m_clTrack1->top + m_clTrack1->GetHeight();
-	m_clTrack1->SetVert(rcViewRect.Height());
-
-	m_clTrack2->CopyRect(m_clTrack1);
-	m_clTrack2->top = m_clTrack1->bottom + 1;
-	m_clTrack2->bottom = m_clTrack2->top + m_clTrack2->GetHeight();
-	m_clTrack2->SetVert(rcViewRect.Height());
+	TrackDataRectList* pTrackDataRectList = m_pTrackDataManager->GetTrackDataRectList();
+	TrackDataRect* pTrackDataRectBefor = m_pTrackDataManager->GetTrackDataRect(pTrackDataRectList->at(0));
+	pTrackDataRectBefor->CopyRect(m_prcTimelineEditPanelRect);
+	pTrackDataRectBefor->top = m_prcTrackHeaderRect->top;
+	pTrackDataRectBefor->bottom = pTrackDataRectBefor->top + pTrackDataRectBefor->GetHeight();
+	pTrackDataRectBefor->SetVert(rcViewRect.Height());
+	TrackDataRect* pTrackDataRect = nullptr;
+	for (int i = 1; i < m_pTrackDataManager->GetTrackCount(); ++i)
+	{
+		pTrackDataRect = m_pTrackDataManager->GetTrackDataRect(pTrackDataRectList->at(i));
+		pTrackDataRect->CopyRect(pTrackDataRectBefor);
+		pTrackDataRect->top = pTrackDataRectBefor->bottom + 1;
+		pTrackDataRect->bottom = pTrackDataRect->top + pTrackDataRect->GetHeight();
+		pTrackDataRect->SetVert(rcViewRect.Height());
+		pTrackDataRectBefor = pTrackDataRect;
+	}
 
 	CalcTimelineDisplayRange();
 
@@ -1363,8 +1347,8 @@ BOOL TimelineEditerView::CalcClipRectDisplayPoint(CRect& rcClipRect, const ClipD
 BOOL TimelineEditerView::CalcClipRect(CRect& rcClipRect, const int& iInPoint, const int& iDuration, const CRect& rcTrackRect, const int& iMoveFrames /* = 0 */,
 	const int& iIntrimFrames /* = 0 */, const int& iOuttrimFrames/* = 0 */)
 {
-	rcClipRect.top = rcTrackRect.top + static_cast<int>(floor(kTrackDefaultHeight * (1 - CLIPHIGHT)));
-	rcClipRect.bottom = rcClipRect.top + static_cast<int>(floor(kTrackDefaultHeight * CLIPHIGHT));
+	rcClipRect.top = rcTrackRect.top + static_cast<int>(rcTrackRect.Height() * (1 - CLIPHIGHT));
+	rcClipRect.bottom = rcClipRect.top + static_cast<int>(rcTrackRect.Height() * CLIPHIGHT);
 	int iLeftScrubingFrameCount = m_iLeftFrameNumber + m_iOperatingFrameCount;
 	int iRightScrubingFrameCount = m_iRightFrameNumber + m_iOperatingFrameCount;
 
@@ -1495,17 +1479,19 @@ int TimelineEditerView::ChangeOperatingDistanceToTimelineFrames(const CSize& szM
 // クリックポイントがトラック領域にあるかの判定
 TrackDataRect* TimelineEditerView::IsPointInAnyTrack(const CPoint& point)
 {
-	// TODO: 最終的にはVectorとかでループをまわす
-
-	if (m_clTrack1->PtInRect(point))
+	TrackDataRectList* pTrackDataRectList = m_pTrackDataManager->GetTrackDataRectList();
+	TrackDataRect* pTrackDataRect = nullptr;
+	int i = 0;
+	while ((i < m_pTrackDataManager->GetTrackCount()) && (pTrackDataRect == nullptr))
 	{
-		return m_clTrack1;
+		pTrackDataRect = m_pTrackDataManager->GetTrackDataRect(pTrackDataRectList->at(i));
+		if (!(pTrackDataRect->PtInRect(point)))
+		{
+			pTrackDataRect = nullptr;
+			++i;
+		}
 	}
-	else if (m_clTrack2->PtInRect(point))
-	{
-		return m_clTrack2;
-	}
-	return nullptr;
+	return pTrackDataRect;
 }
 
 // クリック位置がシークバー内かを判定する
@@ -1539,7 +1525,7 @@ BOOL TimelineEditerView::IsPointInAnyClipRect(const CPoint& point)
 	if ((m_clSelectedTrack != nullptr) && (m_clSelectedTrackInfo != nullptr) && (iFrame >= 0))
 	{
 		int iInPoint = 0;
-		ClipDataInfoMap mpClipMap;
+		ClipDataPositionMap mpClipMap;
 		int iSize = m_clSelectedTrackInfo->GetClipDataAtFrame(iFrame, mpClipMap);
 		if (iSize == 0)
 		{
@@ -1547,12 +1533,12 @@ BOOL TimelineEditerView::IsPointInAnyClipRect(const CPoint& point)
 		}
 		else if (iSize == 1)
 		{
-			ClipDataInfoMap::iterator itr = mpClipMap.begin();
+			ClipDataPositionMap::iterator itr = mpClipMap.begin();
 			m_clMovingClipData = (*itr).second;
 		}
 		else
 		{
-			ClipDataInfoMap::iterator itr = mpClipMap.begin();
+			ClipDataPositionMap::iterator itr = mpClipMap.begin();
 			++itr;
 			m_clMovingClipData = (*itr).second;
 		}
@@ -1561,16 +1547,7 @@ BOOL TimelineEditerView::IsPointInAnyClipRect(const CPoint& point)
 		{
 			if (IsPointInClipRect(point, static_cast<CRect&>(*m_clMovingClipData)))
 			{
-				//m_clMovingClipData->m_iTimelineInPoint = iInPoint;
 				CalcClipRectDisplayPoint(static_cast<CRect>(m_clMovingClipData), m_clMovingClipData, static_cast<CRect>(m_clSelectedTrack));
-			}
-			if (m_clMovingClipData == m_clClipData1)
-			{
-				m_clStaticClipData = m_clClipData2;
-			}
-			else
-			{
-				m_clStaticClipData = m_clClipData1;
 			}
 		}
 	}
@@ -1858,31 +1835,31 @@ void TimelineEditerView::InitAreaRect(void)
 void TimelineEditerView::InitTestObject(void)
 {
 	// TODO: 適切な作り方を提供する
-	m_clTrack1 = new TrackDataRect();
-	m_clTrack1->InitTrackData();
-	m_clTrack1->SetHeight(kTrackDefaultHeight);
-	m_clTrack1->SetTrackName(_T("Track1"));
-	m_clTrackInfo1 = new TrackDataInfo();
-	m_clTrack1->SetTrackDataInfo(m_clTrackInfo1);
+	m_pTrackDataManager = new TrackDataManager();
+	UUID uiTrackId, uiTrackRectId;
 
-	m_clTrack2 = new TrackDataRect();
-	m_clTrack2->InitTrackData();
-	m_clTrack2->SetHeight(kTrackDefaultHeight);
-	m_clTrack2->SetTrackName(_T("Track2"));
-	m_clTrackInfo2 = new TrackDataInfo();
-	m_clTrack2->SetTrackDataInfo(m_clTrackInfo2);
+	m_pTrackDataManager->CreateTrackData(0, uiTrackId, uiTrackRectId);
+	m_pTrackDataManager->CreateTrackData(1, uiTrackId, uiTrackRectId);
+	m_pTrackDataManager->CreateTrackData(2, uiTrackId, uiTrackRectId);
 
-	m_clClipData1 = new ClipDataRect();
-	m_clClipData1->InitClipData();
-	m_clClipData1->m_iTimelineInPoint = 101;
-	m_clClipData1->SetDuration(10);
-	m_clTrackInfo1->AddClip(m_clClipData1->m_iTimelineInPoint, m_clClipData1);
+	m_pClipDataManager = new ClipDataManager();
+	UUID uiClipId, uiClipRectId;
 
-	m_clClipData2 = new ClipDataRect();
-	m_clClipData2->InitClipData();
-	m_clClipData2->m_iTimelineInPoint = 600;
-	m_clClipData2->SetDuration(100);
-	m_clTrackInfo1->AddClip(m_clClipData2->m_iTimelineInPoint, m_clClipData2);
+	ClipDataRect* pClipDataRect = nullptr;
+	m_pClipDataManager->CreateClipData(uiClipId, uiClipRectId);
+	pClipDataRect = m_pClipDataManager->GetClipDataRect(uiClipRectId);
+	pClipDataRect->m_iTimelineInPoint = 101;
+	pClipDataRect->SetDuration(10);
+	m_pTrackDataManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->m_iTimelineInPoint, pClipDataRect);
+
+	m_pClipDataManager->CreateClipData(uiClipId, uiClipRectId);
+	pClipDataRect = m_pClipDataManager->GetClipDataRect(uiClipRectId);
+	pClipDataRect->m_iTimelineInPoint = 600;
+	pClipDataRect->SetDuration(100);
+	m_pTrackDataManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->m_iTimelineInPoint, pClipDataRect);
+
+
+
 
 }
 
