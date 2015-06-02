@@ -24,8 +24,10 @@ private:
 	const int kTrimHitCheckMaxWidth = 30;			// トリムチェックで使用する最大幅（これよりトリムチェック範囲が長い場合に使用する幅）
 
 
+	UUID m_uiTimelineDataOperatorId;
+
 	// 操作中クリップへのポインタ
-	ClipDataRect* m_clMovingClipData;
+	ClipDataRect* m_pOperatingClipData;
 
 	// TODO: 操作中トラックへのポインタ			複数選択時の考慮が必要
 	TrackDataRect* m_pSelectedTrack;		// 選択したクリップのあったトラック
@@ -45,26 +47,26 @@ private:
 
 	CRect m_rcMousePointRect;			// 移動中のイメージ（重なり中のイメージ）
 	CPoint m_poMousePointerLocation;	// マウスボタンが押されたときの位置
-	BOOL m_fLButtonClicking;			// マウスボタンが押されているかどうかを記録
-	BOOL m_fMoving;						// Move操作中
-	BOOL m_fSingleInTriming;			// In側SingleTrim操作中
-	BOOL m_fSingleOutTriming;			// Out側SingleTrim操作中
-	BOOL m_fScrubing;					// Scrub操作中
-	BOOL m_fDragShuttling;				// DragShuttle操作中
+	BOOL m_fLButtonDown;			// マウスボタンが押されているかどうかを記録
+	BOOL m_fMove;						// Move操作中
+	BOOL m_fSingleInTrim;			// In側SingleTrim操作中
+	BOOL m_fSingleOutTrim;			// Out側SingleTrim操作中
+	BOOL m_fScrub;					// Scrub操作中
+	BOOL m_fDragShuttle;				// DragShuttle操作中
 
 	// タイムラインデータ管理
 	TimelineDataManager* m_pTimelineDataManager;
-	UUID m_uiTimelineDataManager;
+	UUID m_uiTimelineDataManagerId;
 	TrackDataManager* m_pTrackDataVideoManager;
-	UUID m_uiTrackDataVideoManager;
+	UUID m_uiTrackDataVideoManagerId;
 	TrackDataManager* m_pTrackDataAudioManager;
-	UUID m_uiTrackDataAudioManager;
+	UUID m_uiTrackDataAudioManagerId;
 	TrackDataManager* m_pTrackDataInfoManager;
-	UUID m_uiTrackDataInfoManager;
+	UUID m_uiTrackDataInfoManagerId;
 	TrackDataManager* m_pTrackDataMasterManager;
-	UUID m_uiTrackDataMasterManager;
+	UUID m_uiTrackDataMasterManagerId;
 	ClipDataManager* m_pClipDataManager;
-	UUID m_uiClipDataManager;
+	UUID m_uiClipDataManagerId;
 
 	int m_iTimelineCursorFramePosition;	// タイムラインカーソル位置のフレーム番号
 	int m_iLeftFrameNumber;				// タイムラインデータ表示範囲の先頭フレーム
@@ -74,7 +76,7 @@ private:
 	int m_iOperatingLeftFrameNumber;	// タイムラインデータ表示範囲の先頭フレーム
 	int m_iOperatingRightFrameNumber;	// タイムラインデータ表示範囲の最終フレーム
 	int m_iOperatingClipFrameCount;		// 操作中クリップの移動／伸縮フレーム数
-	int m_fSuttleSpeed;					// シャトル操作中の移動スピード（倍）
+	float m_fSuttleSpeed;				// シャトル操作中の移動スピード（倍）
 	int m_iEnableMovingFrameCount;		// Move操作中に移動が可能であった直近の移動フレーム数
 	TrackDataRect* m_pEnableMovingTrack;// Move操作中に移動が可能であった直近のトラック位置
 
@@ -85,10 +87,15 @@ private:
 	int m_iBigScaleDrawInterval;		// 大目盛りあたりの中目盛り数
 	int m_iTimelineCursorPoint;			// タイムラインカーソルの描画位置
 
-	void InitializeTimelineDataOperator(void);
+
+public:
+	BOOL InitializeTimelineDataOperator(UUID& uiTimelineDataOperatorId);
 	void DeleteTimelineDataOperator(void);
-	BOOL OnLButtonDown(UINT nFlags, CPoint point);	//L押下時の処理
-	
+	BOOL OnLButtonDown(UINT nFlags, CPoint point);	//Lボタンの処理
+	BOOL OnLButtonUp(UINT nFlags, CPoint point);	//Lボタンの処理
+	BOOL OnRButtonUp(UINT nFlags, CPoint point);	//Lボタンの処理
+	BOOL OnMouseMove(UINT nFlags, CPoint point);	//マウス移動時の処理
+
 	BOOL ChangeDisplayScale(void);
 	void CalcTimelineDisplayRange(void);
 
@@ -97,11 +104,13 @@ private:
 	BOOL IsPointInAnyClipRect(const CPoint& point);
 	BOOL IsPointInClipRect(const CPoint& point, const CRect& rcClipRect);
 	BOOL IsPointInTrimRange(const CPoint& point, const CRect& rcClipRect);
-	//BOOL CheckInTrim(void);
-	//BOOL CheckOutTrim(void);
-	//BOOL CheckMove(CPoint& point);
 	BOOL IsPointInSeekBar(const CPoint& point);
 	BOOL IsPointInTimelineControlPanel(const CPoint& point);
+
+	// 操作チェック
+	BOOL CheckInTrim(void);
+	BOOL CheckOutTrim(void);
+	BOOL CheckMove(CPoint& point);
 
 	// 座標計算・変換
 	BOOL CalcClipRectDisplayPoint(CRect& rcClipRect, const ClipDataRect* clClipData, const CRect& rcTrackRect,
@@ -111,8 +120,6 @@ private:
 	int ChangeTimelineFramePositionToDisplayPoint(const int iFrame);
 	int ChangeDisplayPointToTimelineFramePosition(const CPoint& point, int& iActualFrame);
 	int ChangeOperatingDistanceToTimelineFrames(const CSize& szMoveSize, const int iStartFrame = 0);
-
-
 
 	// Getter
 	OpenGLRect* GetTimelineEditPanelRect(void){ return m_pTimelineEditPanelRect; }
@@ -125,6 +132,42 @@ private:
 	//TODO: これはいらないかも？
 	OpenGLRect* GetTransisionRect(void){ return m_pTransisionRect; }
 
+	TimelineDataManager* GetTimelineDataManager(void){ return m_pTimelineDataManager; }
+	UUID GetTimelineDataManagerId(void){ return m_uiTimelineDataManagerId; }
+	BOOL IsLButtonDown(void){ return m_fLButtonDown; }
+	BOOL IsSingleInTrim(void){ return m_fSingleInTrim; }
+	BOOL IsSingleOutTrim(void){ return m_fSingleOutTrim; }
+	BOOL IsMove(void){ return m_fMove; }
+	BOOL IsScrub(void){ return m_fScrub; }
+	BOOL IsDragShuttle(void){ return m_fDragShuttle; }
+
+	int GetTimelineCursorFramePosition(void){ return m_iTimelineCursorFramePosition; }
+	int GetLeftFrameNumber(void){ return m_iLeftFrameNumber; }
+	int GetRightFrameNumber(void){ return m_iRightFrameNumber; }
+	int GetOperatingFrameCount(void){ return m_iOperatingFrameCount; }
+	int GetOperatingTimelineCursorFramePosition(void){ return m_iOperatingTimelineCursorFramePosition; }
+	int GetOperatingLeftFrameNumber(void){ return m_iOperatingLeftFrameNumber; }
+	int GetOperatingRightFrameNumber(void){ return m_iOperatingRightFrameNumber; }
+	int GetOperatingClipFrameCount(void){ return m_iOperatingClipFrameCount; }
+	float GetSuttleSpeed(void){ return m_fSuttleSpeed; }
+	int GetEnableMovingFrameCount(void){ return m_iEnableMovingFrameCount; }
+	TrackDataRect* GetEnableMovingTrack(void){ return m_pEnableMovingTrack; }
+
+	int GetFramePerPoint(void){ return m_iFramePerPoint; }
+	int GetPointPerFrame(void){ return m_iPointPerFrame; }
+	int GetSmallScaleDrawInterval(void){ return m_iSmallScaleDrawInterval; }
+	int GetMiddleScaleDrawInterval(void){ return m_iMiddleScaleDrawInterval; }
+	int GetBigScaleDrawInterval(void){ return m_iBigScaleDrawInterval; }
+	int GetTimelineCursorPoint(void){ return m_iTimelineCursorPoint; }
+
+	ClipDataRect* GetOperatingClipData(void){ return m_pOperatingClipData; }
+	CRect GetMousePointRect(void){ return m_rcMousePointRect; }
+	CPoint GetMousePointerLocation(void){ return m_poMousePointerLocation; }
+
+	TrackDataRect* GetSelectedTrack(void){ return m_pSelectedTrack; }
+	TrackDataInfo* GetSelectedTrackInfo(void){ return m_pSelectedTrackInfo; }
+	TrackDataRect* GetOperateToTrack(void){ return m_pOperateToTrack; }
+	TrackDataInfo* GetOperateToTrackInfo(void){ return m_pOperateToTrackInfo; }
 };
 
 
