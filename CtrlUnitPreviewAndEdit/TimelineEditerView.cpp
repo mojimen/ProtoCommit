@@ -111,7 +111,7 @@ void TimelineEditerView::OnPaint()
 	DrawTimelineDataRect();
 
 	// トラック枠描画
-	DrawTrack();
+	DrawTrack(iHeight, dc);
 
 	// タイムラインカーソル／シャトル操作補助線描画
 	DrawTimelineCursor(dc, iHeight);
@@ -173,6 +173,8 @@ void TimelineEditerView::OnLButtonDown(UINT nFlags, CPoint point)
 	// タイムラインデータエリア内判定
 	if (m_prcTimelineDataRect->PtInRect(point))
 	{
+		//BOOL fRet;
+		//fRet = m_pTimelineDataOperator->OnLButtonDown(nFlags, point);
 		// トラック判定
 		m_clSelectedTrack = IsPointInAnyTrack(point);
 		m_clSelectedTrackInfo = m_clSelectedTrack->GetTrackDataInfo();
@@ -304,7 +306,6 @@ void TimelineEditerView::OnLButtonDown(UINT nFlags, CPoint point)
 					m_iFramePerPoint = 216000;
 				}
 			}
-			//--m_iSelectedDisplayScaleNumber;
 			if (ChangeDisplayScale())
 			{
 				Invalidate();
@@ -433,7 +434,6 @@ void TimelineEditerView::OnRButtonUp(UINT nFlags, CPoint point)
 				m_iPointPerFrame = 2;
 			}
 		}
-		//++m_iSelectedDisplayScaleNumber;
 		if (ChangeDisplayScale())
 		{
 			Invalidate();
@@ -523,12 +523,21 @@ void TimelineEditerView::OnSize(UINT nType, int cx, int cy)
 }
 
 // 初期設定
-BOOL TimelineEditerView::Create(LPCTSTR lpszClassName, LPCTSTR lpszWindowName, DWORD dwStyle, const RECT& rect, CWnd* pParentWnd, UINT nID, CCreateContext* pContext)
+void TimelineEditerView::OnInitialUpdate()
 {
+	OpenGLView::OnInitialUpdate();
+
 	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
 	InitAreaRect();
 
-	// TODO: とりあえずはここにおいておくが、後で別のところに持っていく
+	m_pTimelineDataManager = new TimelineDataManager();
+	m_pTimelineDataManager->InitializeTimelineDataManager(m_uiTimelineDataManager);
+	m_pTrackDataVideoManager = m_pTimelineDataManager->GetTrackDataManager(TRACKDATAMANAGER_VIDEO, m_uiTrackDataVideoManager);
+	assert(m_pTrackDataVideoManager);
+	m_pTrackDataAudioManager = m_pTimelineDataManager->GetTrackDataManager(TRACKDATAMANAGER_AUDIO, m_uiTrackDataAudioManager);
+	assert(m_pTrackDataAudioManager);
+	m_pClipDataManager = m_pTimelineDataManager->GetClipDataManager(m_uiClipDataManager);
+	assert(m_pClipDataManager);
 	InitTestObject();
 
 	m_fLButtonClicking = FALSE;
@@ -546,14 +555,11 @@ BOOL TimelineEditerView::Create(LPCTSTR lpszClassName, LPCTSTR lpszWindowName, D
 	m_iOperatingFrameCount = 0;
 	m_iOperatingClipFrameCount = 0;
 
-	//m_iSelectedDisplayScaleNumber = 4;
 	m_iFramePerPoint = 0;
 	m_iPointPerFrame = 1;
 	ChangeDisplayScale();
 
 
-
-	return OpenGLView::Create(lpszClassName, lpszWindowName, dwStyle, rect, pParentWnd, nID, pContext);
 }
 
 // 破棄
@@ -563,14 +569,18 @@ void TimelineEditerView::OnDestroy()
 
 	// TODO: ここにメッセージ ハンドラー コードを追加します。
 
-	DeleteObject(m_prcDebugInfoPanelRect);
-	DeleteObject(m_prcTimelineEditPanelRect);
-	DeleteObject(m_prcTimelineEditHeaderRect);
-	DeleteObject(m_prcTimelineControlPanelRect);
-	DeleteObject(m_prcSeekBarRect);
-	DeleteObject(m_prcTrackHeaderRect);
-	DeleteObject(m_prcTimelineDataRect);
-	DeleteObject(m_prcTimelineCursorHitArea);
+	m_pTimelineDataManager->DeleteTimelineDataManager();
+	delete m_pTimelineDataManager;
+
+
+	delete m_prcDebugInfoPanelRect;
+	delete m_prcTimelineEditPanelRect;
+	delete m_prcTimelineEditHeaderRect;
+	delete m_prcTimelineControlPanelRect;
+	delete m_prcSeekBarRect;
+	delete m_prcTrackHeaderRect;
+	delete m_prcTimelineDataRect;
+	delete m_prcTimelineCursorHitArea;
 
 }
 
@@ -716,14 +726,24 @@ void TimelineEditerView::DrawTrackHeader(void)
 }
 
 // トラック描画
-void TimelineEditerView::DrawTrack(void)
+void TimelineEditerView::DrawTrack(const int iHeight, const CPaintDC& dcPaintDC)
 {
-	// TODO: とりあえず今は枠だけ
-	TrackDataRectList* pTrackDataRectList = m_pTrackDataManager->GetTrackDataRectList();
-	for (int i = 0; i < m_pTrackDataManager->GetTrackCount(); ++i)
+	// TODO: とりあえず今は枠と名前だけ
+	TrackDataRectList* pTrackDataRectList = m_pTrackDataVideoManager->GetTrackDataRectList();
+	TrackDataRect* pTrackDataRect;
+	double dPointX, dPointY;
+	HFONT hfDrawFont;
+	CreateDrawFont(13, 0, DEFAULT_FONTFACE, hfDrawFont);
+	for (int i = 0; i < m_pTrackDataVideoManager->GetTrackCount(); ++i)
 	{
-		m_pTrackDataManager->GetTrackDataRect(pTrackDataRectList->at(i))->DrawMyBottomLine();
+		pTrackDataRect = m_pTrackDataVideoManager->GetTrackDataRect(pTrackDataRectList->at(i));
+		pTrackDataRect->DrawMyBottomLine();
+		ChangeScreenPointToOpenGLPoint(pTrackDataRect->left + TRACK_NAME_MARGINLEFT, (pTrackDataRect->top + TRACK_NAME_MARGINTOP), iHeight, dPointX, dPointY);
+		DrawTextOnGL(static_cast<PCTSTR>(pTrackDataRect->GetTrackName()), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+			static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
+
 	}
+	DeleteObject(hfDrawFont);
 }
 
 // タイムラインデータエリア描画
@@ -736,10 +756,10 @@ void TimelineEditerView::DrawTimelineDataRect(void)
 // クリップの描画を行う
 BOOL TimelineEditerView::DrawClip(const int iHeight)
 {
-	TrackDataRectList* pTrackDataRectList = m_pTrackDataManager->GetTrackDataRectList();
-	for (int i = 0; i < m_pTrackDataManager->GetTrackCount(); ++i)
+	TrackDataRectList* pTrackDataRectList = m_pTrackDataVideoManager->GetTrackDataRectList();
+	for (int i = 0; i < m_pTrackDataVideoManager->GetTrackCount(); ++i)
 	{
-		DrawClipInTrack(m_pTrackDataManager->GetTrackDataRect(pTrackDataRectList->at(i)), iHeight);
+		DrawClipInTrack(m_pTrackDataVideoManager->GetTrackDataRect(pTrackDataRectList->at(i)), iHeight);
 	}
 
 	return TRUE;
@@ -1048,16 +1068,16 @@ void TimelineEditerView::SetPanelRect(void)
 	m_prcTimelineCursorHitArea->right = m_iTimelineCursorPoint + kTimelineCursorDragArea;
 	m_prcTimelineCursorHitArea->SetVert(rcViewRect.Height());
 
-	TrackDataRectList* pTrackDataRectList = m_pTrackDataManager->GetTrackDataRectList();
-	TrackDataRect* pTrackDataRectBefor = m_pTrackDataManager->GetTrackDataRect(pTrackDataRectList->at(0));
+	TrackDataRectList* pTrackDataRectList = m_pTrackDataVideoManager->GetTrackDataRectList();
+	TrackDataRect* pTrackDataRectBefor = m_pTrackDataVideoManager->GetTrackDataRect(pTrackDataRectList->at(0));
 	pTrackDataRectBefor->CopyRect(m_prcTimelineEditPanelRect);
 	pTrackDataRectBefor->top = m_prcTrackHeaderRect->top;
 	pTrackDataRectBefor->bottom = pTrackDataRectBefor->top + pTrackDataRectBefor->GetHeight();
 	pTrackDataRectBefor->SetVert(rcViewRect.Height());
 	TrackDataRect* pTrackDataRect = nullptr;
-	for (int i = 1; i < m_pTrackDataManager->GetTrackCount(); ++i)
+	for (int i = 1; i < m_pTrackDataVideoManager->GetTrackCount(); ++i)
 	{
-		pTrackDataRect = m_pTrackDataManager->GetTrackDataRect(pTrackDataRectList->at(i));
+		pTrackDataRect = m_pTrackDataVideoManager->GetTrackDataRect(pTrackDataRectList->at(i));
 		pTrackDataRect->CopyRect(pTrackDataRectBefor);
 		pTrackDataRect->top = pTrackDataRectBefor->bottom + 1;
 		pTrackDataRect->bottom = pTrackDataRect->top + pTrackDataRect->GetHeight();
@@ -1083,7 +1103,6 @@ void TimelineEditerView::CalcTimelineDisplayRange()
 	{
 		iDisplayFrameCount = static_cast<int>(ceil(m_prcSeekBarRect->Width() / m_iPointPerFrame));
 	}
-	//int iDisplayFrameCount = static_cast<int>(floor(m_prcSeekBarRect->Width() / m_fPointPerFrame));
 	m_iTimelineCursorPoint = static_cast<int>(floor(m_prcSeekBarRect->Width() / 2.0f)) + m_prcSeekBarRect->left;
 	m_iLeftFrameNumber = m_iTimelineCursorFramePosition - static_cast<int>(floor((iDisplayFrameCount / 2.0f)));
 	m_iRightFrameNumber = m_iTimelineCursorFramePosition + static_cast<int>(ceil((iDisplayFrameCount / 2.0f))) + 1;
@@ -1247,65 +1266,6 @@ BOOL TimelineEditerView::ChangeDisplayScale(void)
 		}
 	}
 
-	// ここから下はたぶんいらない
-
-
-
-	//if (m_iSelectedDisplayScaleNumber < 0)
-	//{
-	//	m_iSelectedDisplayScaleNumber = 0;
-	//	return FALSE;
-	//}
-	//else if (m_iSelectedDisplayScaleNumber > iArrayCount - 1)
-	//{
-	//	m_iSelectedDisplayScaleNumber = iArrayCount - 1;
-	//	return FALSE;
-	//}
-
-	//m_iFramePerBase = kDisplayScaleArray[m_iSelectedDisplayScaleNumber];
-
-	//m_fPointPerFrame = static_cast<float>(kSeekBarScaleBaseWidth) / static_cast<float>(m_iFramePerBase);
-
-	//if (m_iFramePerBase < kSeekBarScaleMaxCountPerBase)
-	//{
-	//	m_iSeekBarScaleCountPerBase = m_iFramePerBase;
-	//}
-	//else
-	//{
-	//	m_iSeekBarScaleCountPerBase = kSeekBarScaleMaxCountPerBase;
-	//}
-
-	//m_iSmallScaleLength = kSeekBarScaleBaseWidth / m_iSeekBarScaleCountPerBase;
-
-	//if (m_fPointPerFrame < 1)
-	//{
-	//	m_iPointPerOperation = 1;
-	//}
-	//else
-	//{
-	//	m_iPointPerOperation = static_cast<int>(floor(m_fPointPerFrame));
-	//	if ((m_fPointPerFrame - m_iPointPerOperation) != 0)
-	//	{
-	//		return FALSE;
-	//	}
-	//}
-
-	//m_fFramePerPoint = static_cast<float>(m_iFramePerBase) / static_cast<float>(kSeekBarScaleBaseWidth);
-
-	//float fFramePerScale = static_cast<float>(m_iFramePerBase) / static_cast<float>(m_iSeekBarScaleCountPerBase);
-	//if ((fFramePerScale - static_cast<int>(floor(fFramePerScale))) == 0)
-	//{
-	//	m_iFramePerScale = m_iFramePerBase / m_iSeekBarScaleCountPerBase;
-	//}
-	//else
-	//{
-	//	m_iFramePerScale = static_cast<int>(floor(fFramePerScale));
-	//	return FALSE;
-	//}
-
-
-
-
 	CalcTimelineDisplayRange();
 
 	return TRUE;
@@ -1399,17 +1359,14 @@ int TimelineEditerView::ChangeDisplayPointToTimelineFramePosition(const CPoint& 
 
 	// １フレームあたりのポイント数が１未満の場合
 	if (m_iPointPerFrame < 1)
-		//if (m_fPointPerFrame < 1)
 	{
 		// タイムラインカーソルからのフレーム数を求める
 		iFrame = iHorizontalLengthFromTimelineCursor * m_iFramePerPoint + m_iTimelineCursorFramePosition;
-		//iFrame = iHorizontalLengthFromTimelineCursor * m_fFramePerPoint + m_iTimelineCursorFramePosition;
 	}
 	else
 	{
 		// タイムラインカーソルからの相対座標を求める
 		iFrame = static_cast<int>(floor(iHorizontalLengthFromTimelineCursor / m_iPointPerFrame)) + m_iTimelineCursorFramePosition;
-		//iFrame = static_cast<int>(ceil(iHorizontalLengthFromTimelineCursor / m_fPointPerFrame)) + m_iTimelineCursorFramePosition;
 	}
 	iActualFrame = iFrame;
 	if (iFrame < 0)
@@ -1434,22 +1391,18 @@ int TimelineEditerView::ChangeOperatingDistanceToTimelineFrames(const CSize& szM
 
 	// １ポイントあたりのフレーム数が１未満の場合（１フレームが複数ポイントに跨る）
 	if (m_iFramePerPoint < 1)
-		//if (m_fFramePerPoint < 1)
 	{
 		// 移動フレーム数は実際の移動長×１ポイントあたりのフレーム数（必要な幅を動かさないとフレームは動かない）
 		iFrames = static_cast<int>(floor(szMoveSize.cx / m_iPointPerFrame));
-		//iFrames = static_cast<int>(floor(szMoveSize.cx * m_fFramePerPoint));
 	}
 	else
 	{
 		// 表示に切りの良いフレーム位置でない場合は調整する
 		int iSurPlus = iStartFrame % m_iFramePerPoint;
-		//int iSurPlus = iStratFrame % static_cast<int>(m_fFramePerPoint);
 		if (iSurPlus == 0)
 		{
 			// 移動フレーム数は実際の移動長×１ポイントあたりのフレーム数（１ポイントで複数フレーム動く）
 			iFrames = szMoveSize.cx * m_iFramePerPoint;
-			//iFrames = szMoveSize.cx * m_fFramePerPoint;
 		}
 		else
 		{
@@ -1457,12 +1410,10 @@ int TimelineEditerView::ChangeOperatingDistanceToTimelineFrames(const CSize& szM
 			if (szMoveSize.cx < 0)
 			{
 				iFrames = ((szMoveSize.cx + 1) * m_iFramePerPoint) - iSurPlus;
-				//iFrames = ((szMoveSize.cx + 1) * m_fFramePerPoint) - iSurPlus;
 			}
 			else
 			{
 				iFrames = ((szMoveSize.cx - 1) * m_iFramePerPoint) + m_iFramePerPoint - iSurPlus;
-				//iFrames = ((szMoveSize.cx - 1) * m_fFramePerPoint) + (static_cast<int>(m_fFramePerPoint)-iSurPlus);
 			}
 		}
 	}
@@ -1479,12 +1430,12 @@ int TimelineEditerView::ChangeOperatingDistanceToTimelineFrames(const CSize& szM
 // クリックポイントがトラック領域にあるかの判定
 TrackDataRect* TimelineEditerView::IsPointInAnyTrack(const CPoint& point)
 {
-	TrackDataRectList* pTrackDataRectList = m_pTrackDataManager->GetTrackDataRectList();
+	TrackDataRectList* pTrackDataRectList = m_pTrackDataVideoManager->GetTrackDataRectList();
 	TrackDataRect* pTrackDataRect = nullptr;
 	int i = 0;
-	while ((i < m_pTrackDataManager->GetTrackCount()) && (pTrackDataRect == nullptr))
+	while ((i < m_pTrackDataVideoManager->GetTrackCount()) && (pTrackDataRect == nullptr))
 	{
-		pTrackDataRect = m_pTrackDataManager->GetTrackDataRect(pTrackDataRectList->at(i));
+		pTrackDataRect = m_pTrackDataVideoManager->GetTrackDataRect(pTrackDataRectList->at(i));
 		if (!(pTrackDataRect->PtInRect(point)))
 		{
 			pTrackDataRect = nullptr;
@@ -1587,7 +1538,7 @@ BOOL TimelineEditerView::IsPointInTrimRange(const CPoint& point, const CRect& rc
 
 	// In側判定
 	rcTrimRect.CopyRect(rcClipRect);
-	// クリップ幅が規定値未満の場合はTrim決めうち
+	// クリップ幅が規定値未満の場合はInTrim決めうち
 	if (rcTrimRect.Width() < kClipHitCheckMinWidth)
 	{
 		//TODO: In側映像がない場合（ClipIn点=0）OutTrimにふる
@@ -1835,14 +1786,12 @@ void TimelineEditerView::InitAreaRect(void)
 void TimelineEditerView::InitTestObject(void)
 {
 	// TODO: 適切な作り方を提供する
-	m_pTrackDataManager = new TrackDataManager();
 	UUID uiTrackId, uiTrackRectId;
 
-	m_pTrackDataManager->CreateTrackData(0, uiTrackId, uiTrackRectId);
-	m_pTrackDataManager->CreateTrackData(1, uiTrackId, uiTrackRectId);
-	m_pTrackDataManager->CreateTrackData(2, uiTrackId, uiTrackRectId);
+	m_pTrackDataVideoManager->CreateTrackData(0, uiTrackId, uiTrackRectId);
+	m_pTrackDataVideoManager->CreateTrackData(1, uiTrackId, uiTrackRectId);
+	m_pTrackDataVideoManager->CreateTrackData(2, uiTrackId, uiTrackRectId);
 
-	m_pClipDataManager = new ClipDataManager();
 	UUID uiClipId, uiClipRectId;
 
 	ClipDataRect* pClipDataRect = nullptr;
@@ -1850,14 +1799,19 @@ void TimelineEditerView::InitTestObject(void)
 	pClipDataRect = m_pClipDataManager->GetClipDataRect(uiClipRectId);
 	pClipDataRect->m_iTimelineInPoint = 101;
 	pClipDataRect->SetDuration(10);
-	m_pTrackDataManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->m_iTimelineInPoint, pClipDataRect);
+	m_pTrackDataVideoManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->m_iTimelineInPoint, pClipDataRect);
 
 	m_pClipDataManager->CreateClipData(uiClipId, uiClipRectId);
 	pClipDataRect = m_pClipDataManager->GetClipDataRect(uiClipRectId);
 	pClipDataRect->m_iTimelineInPoint = 600;
 	pClipDataRect->SetDuration(100);
-	m_pTrackDataManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->m_iTimelineInPoint, pClipDataRect);
+	m_pTrackDataVideoManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->m_iTimelineInPoint, pClipDataRect);
 
+	m_pClipDataManager->CreateClipData(uiClipId, uiClipRectId);
+	pClipDataRect = m_pClipDataManager->GetClipDataRect(uiClipRectId);
+	pClipDataRect->m_iTimelineInPoint = 300;
+	pClipDataRect->SetDuration(50);
+	m_pTrackDataVideoManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->m_iTimelineInPoint, pClipDataRect);
 
 
 
@@ -1867,4 +1821,6 @@ void TimelineEditerView::InitTestObject(void)
 void TimelineEditerView::CreateZoomMap(void)
 {
 }
+
+
 

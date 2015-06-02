@@ -6,7 +6,6 @@
 #include "TrackDataRect.h"
 #include "TrackDataManager.h"
 
-
 // TrackDataRect
 
 TrackDataRect::TrackDataRect()

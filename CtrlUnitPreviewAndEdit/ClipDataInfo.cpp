@@ -5,12 +5,22 @@
 #include "CtrlUnitPreviewAndEdit.h"
 #include "ClipDataInfo.h"
 
-
 // ClipDataInfo
 
 ClipDataInfo::ClipDataInfo()
 {
 	m_eClipDataInfoTag = CLIPDATAINFO;
+	m_eClipKind = VIDEO;
+	m_iInPoint = 0;
+	m_iOutPoint = 0;
+	m_iDuration = 0;
+	m_iInOffset = 0;
+}
+
+ClipDataInfo::ClipDataInfo(InfoKind eKind)
+{
+	ClipDataInfo();
+	m_eClipKind = eKind;
 }
 
 ClipDataInfo::~ClipDataInfo()
@@ -24,7 +34,6 @@ BOOL ClipDataInfo::InitializeClipId(UUID& uiClipId)
 	if (RPC_S_OK == UuidCreate(&m_uiClipId))
 	{
 		uiClipId = m_uiClipId;
-		//CreateClipInOutPoint();
 		return TRUE;
 	}
 	else
@@ -33,16 +42,13 @@ BOOL ClipDataInfo::InitializeClipId(UUID& uiClipId)
 	}
 }
 
-void ClipDataInfo::CreateClipInOutPoint()
+// クリップ表示データ削除
+BOOL ClipDataInfo::DeleteClipData(void)
 {
-	std::random_device rd;
-	std::mt19937 mt(rd());
-	std::uniform_int_distribution<int> In(1, 99999999);
-	std::uniform_int_distribution<int> Dur(1, 99999);
-
-	m_iInPoint = In(mt);
-	m_iDuration = Dur(mt);
-	m_iOutPoint = m_iInPoint + m_iDuration - 1;
-
-	return;
+	if (m_pClipDataRect)
+	{
+		delete m_pClipDataRect;
+		return TRUE;
+	}
+	return FALSE;
 }

@@ -1,26 +1,8 @@
 #pragma once
-#include<map>
+#include "TimelineDataManager.h"
 
 class ClipDataInfo;
 class ClipDataRect;
-
-typedef std::map<CString, ClipDataInfo*> ClipDataInfoMap;
-typedef std::map<CString, ClipDataRect*> ClipDataRectMap;
-
-typedef enum ClipDataTag{ 
-	CLIPDATAMANAGER,
-	CLIPDATAINFO,
-	CLIPDATARECT
-};
-
-typedef enum ClipKind {
-	CLIP_VIDEO,
-	CLIP_AUDIO,
-	CLIP_TITLE,
-	CLIP_MASTER_VIDEO,
-	CLIP_MASTER_AUDIO
-};
-
 
 // ClipDataManager コマンド ターゲット
 
@@ -40,6 +22,8 @@ private:
 
 public:
 	BOOL InitializeClipDataManagerId(UUID& uiClipDataManagerId);
+	void DeleteClipDataManager(void);
+	BOOL DeleteClipData(const UUID& uiClipId, const BOOL fInfoFlag = TRUE);
 
 	BOOL SetClipData(const UUID& uiClipId, ClipDataInfo* pClipDataInfo, const UUID& uiClipRectId, ClipDataRect* pClipDataRect);
 	ClipDataInfo* GetClipDataInfo(const UUID& uiClipId);
@@ -47,8 +31,6 @@ public:
 	BOOL CreateClipData(UUID& uiClipId, UUID& uiClipRectId);
 	BOOL ChangeUUIDToCString(const UUID& uiId, PCTSTR& pszId);
 
-	
-	//BOOL DeleteClipData(const UUID& uiClipDataRectId);
 };
 
 

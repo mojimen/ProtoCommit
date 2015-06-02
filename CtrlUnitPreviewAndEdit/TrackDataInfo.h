@@ -1,18 +1,7 @@
 #pragma once
-
-#include <list>
-#include <map>
-#include <rpc.h>
-#pragma comment(lib ,"rpcrt4.lib")
-
 #include "TrackDataManager.h"
 
-class ClipDataRect;
-
 // TrackDataInfo コマンド ターゲット
-
-typedef std::map<int, ClipDataRect*> ClipDataPositionMap;	//InPoint,ClipDataPointer 
-//typedef std::map<int, UUID> ClipDataPositionMap;	//InPoint,ClipId 
 
 class TrackDataInfo : public CObject
 {
@@ -20,22 +9,13 @@ public:
 	TrackDataInfo();
 	virtual ~TrackDataInfo();
 
-	enum TrackKind {
-		VIDEO,
-		AUDIO,
-		TITLE,
-		INFO,
-		MASTER_VIDEO,
-		MASTER_AUDIO
-	};
-
 private:
 	TrackDataTag m_eTrackDataInfoTag;
 	UUID m_uiTrackId;
-	TrackKind m_eTrackKind;
+	InfoKind m_eTrackKind;
 	UUID m_uiInputChannel;
 	UUID m_uiOutputChannel;
-	ClipDataPositionMap m_mpClipDataInfoMap;
+	ClipDataPositionMap m_mpClipDataRectMap;
 
 	// 再生時参照項目
 	BOOL m_fSolo;
@@ -43,9 +23,9 @@ private:
 	BOOL m_fMuted;
 	BOOL m_fLevelPointRecordable;
 	
-	// ビューとのリンク項目
-	//UUID m_uiTrackRectId;
-	//TrackDataRect* m_pTrackDataRect;
+	// トラック表示データとのリンク項目
+	UUID m_uiTrackRectId;
+	TrackDataRect* m_pTrackDataRect;
 
 public:
 	BOOL InitTrackData(void);
@@ -55,13 +35,15 @@ public:
 	void AddClip(const int iInPoint, ClipDataRect* pClipData);
 	void DeleteClip(const int iInPoint);
 	void ChangeClip(const int iOldInPoint, const int iNewInPoint, ClipDataRect* pClipData);
+	void SetTrackDataRect(const UUID& uiTrackRectId, TrackDataRect* pTrackDataRect) { m_pTrackDataRect = pTrackDataRect; m_uiTrackRectId = uiTrackRectId; }
+	void DeleteTrackDataInfo(void);
 
 	// Getter
 	ClipDataRect* GetClipDataInfo(const int iFrame, int& iInPoint);
 	int GetClipDataAtFrame(const int iFrame, ClipDataPositionMap& mpClipMap);
 	int GetClipDataInRange(const int iStartFrame, const int iEndFrame, ClipDataPositionMap& mpClipMap);
-	//UUID GetTrackRectId(void) { return m_uiTrackRectId; }
-	//TrackDataRect* GetTrackDataRect(void) { return m_pTrackDataRect; }
+	UUID GetTrackRectId(void) { return m_uiTrackRectId; }
+	TrackDataRect* GetTrackDataRect(void) { return m_pTrackDataRect; }
 
 	// Setter
 	//void SetTrackRectId(UUID uiTrackRectId) { m_uiTrackRectId = uiTrackRectId; }

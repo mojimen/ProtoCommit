@@ -48,6 +48,17 @@ BOOL ClipDataRect::InitializeClipRectId(UUID& uiClipRectId)
 	}
 }
 
+// クリップ情報データ削除
+BOOL ClipDataRect::DeleteClipData(void)
+{
+	if (m_pClipDataInfo)
+	{
+		delete m_pClipDataInfo;
+		return TRUE;
+	}
+	return FALSE;
+}
+
 void ClipDataRect::GetOverlappingVert(float(&fVert)[4][3])
 {
 	CopyVert(m_fOverlappingVert, fVert);

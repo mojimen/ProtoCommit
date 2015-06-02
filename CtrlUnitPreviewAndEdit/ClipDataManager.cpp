@@ -37,6 +37,59 @@ BOOL ClipDataManager::InitializeClipDataManagerId(UUID& uiClipDataManagerId)
 	}
 }
 
+// クリップ全データ削除
+void ClipDataManager::DeleteClipDataManager(void)
+{
+	ClipDataInfoMap::iterator itrInfo = m_ClipDataInfoMap.begin();
+	while (itrInfo != m_ClipDataInfoMap.end())
+	{
+		delete (*itrInfo).second;
+		++itrInfo;
+	}
+	ClipDataRectMap::iterator itrRect = m_ClipDataRectMap.begin();
+	while (itrRect != m_ClipDataRectMap.end())
+	{
+		delete (*itrRect).second;
+		++itrRect;
+	}
+	// メモリも解放されます
+	m_ClipDataInfoMap.clear();
+	m_ClipDataRectMap.clear();
+}
+
+// クリップデータ削除
+BOOL ClipDataManager::DeleteClipData(const UUID& uiClipId, const BOOL fInfoFlag /*= TRUE*/)
+{	
+	PCTSTR pszClipId = nullptr;
+	if (ChangeUUIDToCString(uiClipId, pszClipId))
+	{
+		if (fInfoFlag)
+		{
+			ClipDataInfoMap::iterator itr = m_ClipDataInfoMap.find(static_cast<CString>(pszClipId));
+			if (itr != m_ClipDataInfoMap.end())
+			{
+				ClipDataRect* pClipDataRect = (*itr).second->GetClipDataRect();
+				delete pClipDataRect;
+				delete (*itr).second;
+				return TRUE;
+			}
+		}
+		else
+		{
+			ClipDataRectMap::iterator itr = m_ClipDataRectMap.find(static_cast<CString>(pszClipId));
+			if (itr != m_ClipDataRectMap.end())
+			{
+				ClipDataInfo* pClipDataInfo = (*itr).second->GetClipDataInfo();
+				delete pClipDataInfo;
+				delete (*itr).second;
+				return TRUE;
+			}
+		}
+	}
+	return FALSE;
+}
+
+
 // 生成したクリップ情報データを管理情報に登録する。
 BOOL ClipDataManager::SetClipData(const UUID& uiClipId, ClipDataInfo* pClipDataInfo, const UUID& uiClipRectId, ClipDataRect* pClipDataRect)
 {
@@ -69,6 +122,7 @@ BOOL ClipDataManager::CreateClipData(UUID& uiClipId, UUID& uiClipRectId)
 		{
 			pClipDataRect->InitClipData();
 			pClipDataRect->SetClipDataInfo(uiClipId, pClipDataInfo);
+			pClipDataInfo->SetClipDataRect(uiClipRectId, pClipDataRect);
 			SetClipData(uiClipId, pClipDataInfo, uiClipRectId, pClipDataRect);
 			return TRUE;
 		}
