@@ -36,6 +36,7 @@ BEGIN_MESSAGE_MAP(TimelineEditorView, OpenGLView)
 	ON_WM_DESTROY()
 	ON_WM_RBUTTONUP()
 	ON_WM_DROPFILES()
+	ON_WM_CREATE()
 END_MESSAGE_MAP()
 
 // TimelineEditorView 描画
@@ -44,16 +45,6 @@ void TimelineEditorView::OnDraw(CDC* pDC)
 {
 	CDocument* pDoc = GetDocument();
 	// TODO: 描画コードをここに追加してください。
-}
-
-// ウィンドウスタイル初期値変更
-BOOL TimelineEditorView::PreCreateWindow(CREATESTRUCT& cs)
-{
-	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
-
-	cs.dwExStyle |= WS_EX_ACCEPTFILES;
-
-	return OpenGLView::PreCreateWindow(cs);
 }
 
 
@@ -73,6 +64,36 @@ void TimelineEditorView::Dump(CDumpContext& dc) const
 }
 #endif
 #endif //_DEBUG
+
+
+// ウィンドウスタイル初期値変更
+BOOL TimelineEditorView::PreCreateWindow(CREATESTRUCT& cs)
+{
+	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
+
+	//cs.dwExStyle |= WS_EX_ACCEPTFILES;
+
+	return OpenGLView::PreCreateWindow(cs);
+}
+
+// 初期設定
+int TimelineEditorView::OnCreate(LPCREATESTRUCT lpCreateStruct)
+{
+	if (OpenGLView::OnCreate(lpCreateStruct) == -1)
+		return -1;
+
+	// TODO: ここに特定な作成コードを追加してください。
+	// ドロップターゲットに登録
+	if (m_DropTarget.Register(this))
+	{
+		return 0;
+	}
+	else
+	{
+		return -1;
+	}
+}
+
 
 
 // TimelineEditorView メッセージ ハンドラー
@@ -220,6 +241,7 @@ void TimelineEditorView::OnDropFiles(HDROP hDropInfo)
 	if (m_pTimelineDataOperator->OnDropFiles(hDropInfo, strFileName))
 	{
 		OutputDebugString(strFileName + "\n");
+		GetParent()->SetForegroundWindow();
 		Invalidate();
 	}
 	else
@@ -262,6 +284,13 @@ void TimelineEditorView::DrawTimelineEditorView(CPaintDC& dcPaintDC)
 	{
 		DrawOperatingClip(dcPaintDC, iHeight);
 	}
+
+	if (m_pTimelineDataOperator->EnableDrawDragRect())
+	{
+		ClipDataRect* pClipRect = m_pTimelineDataOperator->GetDragAndDropClipDataRect();
+		pClipRect->DrawMyFillRect();
+	}
+
 
 	// トラックヘッダー描画
 	DrawTrackHeader();
@@ -665,7 +694,6 @@ BOOL TimelineEditorView::DrawOperatingClip(const CDC& dcPaintDC, const int iHeig
 #endif
 		}
 	}
-
 	return TRUE;
 }
 
@@ -910,3 +938,50 @@ void TimelineEditorView::CreateZoomMap(void)
 
 
 
+
+
+
+
+DROPEFFECT TimelineEditorView::OnDragEnter(COleDataObject* pDataObject, DWORD dwKeyState, CPoint point)
+{
+	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
+
+	OutputDebugString(_T("Drag!!\n"));
+
+	m_pTimelineDataOperator->OnDragEnter(pDataObject, dwKeyState, point);
+	if (m_pTimelineDataOperator->EnableDrawDragRect())
+	{
+		Invalidate();
+	}
+	return OpenGLView::OnDragEnter(pDataObject, dwKeyState, point);
+}
+
+
+
+void TimelineEditorView::OnDragLeave()
+{
+	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
+	OutputDebugString(_T("Leave\n"));
+
+	OpenGLView::OnDragLeave();
+}
+
+
+DROPEFFECT TimelineEditorView::OnDragOver(COleDataObject* pDataObject, DWORD dwKeyState, CPoint point)
+{
+	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
+	OutputDebugString(_T("Move\n"));
+
+	//m_pTimelineDataOperator->OnDragOver(pDataObject, dwKeyState, point);
+
+	return OpenGLView::OnDragOver(pDataObject, dwKeyState, point);
+}
+
+
+BOOL TimelineEditorView::OnDrop(COleDataObject* pDataObject, DROPEFFECT dropEffect, CPoint point)
+{
+	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
+	OutputDebugString(_T("Drop\n"));
+
+	return OpenGLView::OnDrop(pDataObject, dropEffect, point);
+}
