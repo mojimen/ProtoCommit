@@ -7,6 +7,7 @@ class TrackDataInfo;
 class TrackDataRect;
 class ClipDataManager;
 class ClipDataRect;
+class DragAndDropOperator;
 
 // TimelineDataOperator コマンド ターゲット
 
@@ -68,6 +69,10 @@ private:
 	ClipDataManager* m_pClipDataManager;
 	UUID m_uiClipDataManagerId;
 
+	// オペレータ
+	DragAndDropOperator* m_pDropAndDragOperator;
+	UUID m_uiDropAndDragOperatorId;
+
 	int m_iTimelineCursorFramePosition;	// タイムラインカーソル位置のフレーム番号
 	int m_iLeftFrameNumber;				// タイムラインデータ表示範囲の先頭フレーム
 	int m_iRightFrameNumber;			// タイムラインデータ表示範囲の最終フレーム
@@ -95,6 +100,7 @@ public:
 	BOOL OnLButtonUp(UINT nFlags, CPoint point);	//Lボタンの処理
 	BOOL OnRButtonUp(UINT nFlags, CPoint point);	//Lボタンの処理
 	BOOL OnMouseMove(UINT nFlags, CPoint point);	//マウス移動時の処理
+	BOOL OnDropFiles(const HDROP& hDropInfo, CString& strFileName);
 
 	BOOL ChangeDisplayScale(void);
 	void CalcTimelineDisplayRange(void);
@@ -120,6 +126,7 @@ public:
 	int ChangeTimelineFramePositionToDisplayPoint(const int iFrame);
 	int ChangeDisplayPointToTimelineFramePosition(const CPoint& point, int& iActualFrame);
 	int ChangeOperatingDistanceToTimelineFrames(const CSize& szMoveSize, const int iStartFrame = 0);
+
 
 	// Getter
 	OpenGLRect* GetTimelineEditPanelRect(void){ return m_pTimelineEditPanelRect; }

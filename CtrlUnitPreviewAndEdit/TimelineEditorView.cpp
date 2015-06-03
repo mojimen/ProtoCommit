@@ -1,9 +1,9 @@
-// TimelineEditerView.cpp : 実装ファイル
+// TimelineEditorView.cpp : 実装ファイル
 //
 
 #include "stdafx.h"
 #include "CtrlUnitPreviewAndEdit.h"
-#include "TimelineEditerView.h"
+#include "TimelineEditorView.h"
 
 #include "OpenGLRect.h"
 #include "TimelineDataOperator.h"
@@ -14,20 +14,20 @@
 
 #include <map>
 
-// TimelineEditerView
+// TimelineEditorView
 
-IMPLEMENT_DYNCREATE(TimelineEditerView, OpenGLView)
+IMPLEMENT_DYNCREATE(TimelineEditorView, OpenGLView)
 
-TimelineEditerView::TimelineEditerView()
+TimelineEditorView::TimelineEditorView()
 {
 
 }
 
-TimelineEditerView::~TimelineEditerView()
+TimelineEditorView::~TimelineEditorView()
 {
 }
 
-BEGIN_MESSAGE_MAP(TimelineEditerView, OpenGLView)
+BEGIN_MESSAGE_MAP(TimelineEditorView, OpenGLView)
 	ON_WM_PAINT()
 	ON_WM_LBUTTONDOWN()
 	ON_WM_LBUTTONUP()
@@ -35,28 +35,39 @@ BEGIN_MESSAGE_MAP(TimelineEditerView, OpenGLView)
 	ON_WM_SIZE()
 	ON_WM_DESTROY()
 	ON_WM_RBUTTONUP()
+	ON_WM_DROPFILES()
 END_MESSAGE_MAP()
 
+// TimelineEditorView 描画
 
-// TimelineEditerView 描画
-
-void TimelineEditerView::OnDraw(CDC* pDC)
+void TimelineEditorView::OnDraw(CDC* pDC)
 {
 	CDocument* pDoc = GetDocument();
 	// TODO: 描画コードをここに追加してください。
 }
 
+// ウィンドウスタイル初期値変更
+BOOL TimelineEditorView::PreCreateWindow(CREATESTRUCT& cs)
+{
+	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
 
-// TimelineEditerView 診断
+	cs.dwExStyle |= WS_EX_ACCEPTFILES;
+
+	return OpenGLView::PreCreateWindow(cs);
+}
+
+
+
+// TimelineEditorView 診断
 
 #ifdef _DEBUG
-void TimelineEditerView::AssertValid() const
+void TimelineEditorView::AssertValid() const
 {
 	CView::AssertValid();
 }
 
 #ifndef _WIN32_WCE
-void TimelineEditerView::Dump(CDumpContext& dc) const
+void TimelineEditorView::Dump(CDumpContext& dc) const
 {
 	CView::Dump(dc);
 }
@@ -64,32 +75,32 @@ void TimelineEditerView::Dump(CDumpContext& dc) const
 #endif //_DEBUG
 
 
-// TimelineEditerView メッセージ ハンドラー
+// TimelineEditorView メッセージ ハンドラー
 
 // 画面描画
-void TimelineEditerView::OnPaint()
+void TimelineEditorView::OnPaint()
 {
 	CPaintDC dc(this); // device context for painting
 	// TODO: ここにメッセージ ハンドラー コードを追加します。
 	// 描画メッセージで OpenGLView::OnPaint() を呼び出さないでください。
 
-	::wglMakeCurrent(m_pDC->GetSafeHdc(), m_hRC);
+	wglMakeCurrent(m_pDC->GetSafeHdc(), m_hRC);
 
 	// 背景塗りつぶし
-	::glClearColor(TIMELINEBASECOLOR_BRUSH_FLOAT);
-	::glClear(GL_COLOR_BUFFER_BIT);
-	//::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	glClearColor(TIMELINEBASECOLOR_BRUSH_FLOAT);
+	glClear(GL_COLOR_BUFFER_BIT);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-	DrawTimelineEditerView(dc);
+	DrawTimelineEditorView(dc);
 
-	::glFlush();
-	::SwapBuffers(m_pDC->GetSafeHdc());
+	glFlush();
+	SwapBuffers(m_pDC->GetSafeHdc());
 
-	::wglMakeCurrent(NULL, NULL);
+	wglMakeCurrent(NULL, NULL);
 }
 
 // Ｌボタンダウン
-void TimelineEditerView::OnLButtonDown(UINT nFlags, CPoint point)
+void TimelineEditorView::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	// TODO: ここにメッセージ ハンドラー コードを追加するか、既定の処理を呼び出します。
 	BOOL fRet = m_pTimelineDataOperator->OnLButtonDown(nFlags, point);
@@ -107,7 +118,7 @@ void TimelineEditerView::OnLButtonDown(UINT nFlags, CPoint point)
 }
 
 // Ｌボタンアップ
-void TimelineEditerView::OnLButtonUp(UINT nFlags, CPoint point)
+void TimelineEditorView::OnLButtonUp(UINT nFlags, CPoint point)
 {
 	// TODO: ここにメッセージ ハンドラー コードを追加するか、既定の処理を呼び出します。
 
@@ -123,7 +134,7 @@ void TimelineEditerView::OnLButtonUp(UINT nFlags, CPoint point)
 }
 
 // Ｒボタンアップ
-void TimelineEditerView::OnRButtonUp(UINT nFlags, CPoint point)
+void TimelineEditorView::OnRButtonUp(UINT nFlags, CPoint point)
 {
 	if (m_pTimelineDataOperator->OnRButtonUp(nFlags, point))
 	{
@@ -138,7 +149,7 @@ void TimelineEditerView::OnRButtonUp(UINT nFlags, CPoint point)
 }
 
 // マウス移動
-void TimelineEditerView::OnMouseMove(UINT nFlags, CPoint point)
+void TimelineEditorView::OnMouseMove(UINT nFlags, CPoint point)
 {
 	// TODO: ここにメッセージ ハンドラー コードを追加するか、既定の処理を呼び出します。
 
@@ -152,7 +163,7 @@ void TimelineEditerView::OnMouseMove(UINT nFlags, CPoint point)
 }
 
 // サイズ変更
-void TimelineEditerView::OnSize(UINT nType, int cx, int cy)
+void TimelineEditorView::OnSize(UINT nType, int cx, int cy)
 {
 	OpenGLView::OnSize(nType, cx, cy);
 
@@ -163,7 +174,7 @@ void TimelineEditerView::OnSize(UINT nType, int cx, int cy)
 }
 
 // 初期設定
-void TimelineEditerView::OnInitialUpdate()
+void TimelineEditorView::OnInitialUpdate()
 {
 	OpenGLView::OnInitialUpdate();
 
@@ -174,9 +185,9 @@ void TimelineEditerView::OnInitialUpdate()
 	m_pTimelineDataManager = m_pTimelineDataOperator->GetTimelineDataManager();
 	m_uiTimelineDataManager = m_pTimelineDataOperator->GetTimelineDataManagerId();
 	m_pTrackDataVideoManager = m_pTimelineDataManager->GetTrackDataManager(TRACKDATAMANAGER_VIDEO, m_uiTrackDataVideoManager);
-	assert(m_pTrackDataVideoManager);
+	ASSERT(m_pTrackDataVideoManager);
 	m_pTrackDataAudioManager = m_pTimelineDataManager->GetTrackDataManager(TRACKDATAMANAGER_AUDIO, m_uiTrackDataAudioManager);
-	assert(m_pTrackDataAudioManager);
+	ASSERT(m_pTrackDataAudioManager);
 
 	InitAreaRect();
 	m_pDebugInfoPanelRect->bottom = m_pDebugInfoPanelRect->top + kDebugInfoPanelDefaltHeight;
@@ -186,7 +197,7 @@ void TimelineEditerView::OnInitialUpdate()
 }
 
 // 破棄
-void TimelineEditerView::OnDestroy()
+void TimelineEditorView::OnDestroy()
 {
 	OpenGLView::OnDestroy();
 
@@ -199,6 +210,26 @@ void TimelineEditerView::OnDestroy()
 
 }
 
+// ファイルドロップ
+void TimelineEditorView::OnDropFiles(HDROP hDropInfo)
+{
+	// TODO: ここにメッセージ ハンドラー コードを追加するか、既定の処理を呼び出します。
+
+	CString strFileName;
+
+	if (m_pTimelineDataOperator->OnDropFiles(hDropInfo, strFileName))
+	{
+		OutputDebugString(strFileName + "\n");
+		Invalidate();
+	}
+	else
+	{
+		OutputDebugString(_T("DROP FALSE\n"));
+	}
+
+	OpenGLView::OnDropFiles(hDropInfo);
+}
+
 
 /*
 
@@ -206,7 +237,7 @@ void TimelineEditerView::OnDestroy()
 
 */
 //画面描画
-void TimelineEditerView::DrawTimelineEditerView(CPaintDC& dcPaintDC)
+void TimelineEditorView::DrawTimelineEditorView(CPaintDC& dcPaintDC)
 {
 	CRect rcRect;
 	GetClientRect(&rcRect);
@@ -244,7 +275,7 @@ void TimelineEditerView::DrawTimelineEditerView(CPaintDC& dcPaintDC)
 	// タイムラインカーソル／シャトル操作補助線描画
 	DrawTimelineCursor(dcPaintDC, iHeight);
 
-#ifdef PROTOTYPEMODE
+#ifdef _DEBUG
 	CString strFrameNumber;
 	double dPointX, dPointY;
 	HFONT hfDrawFont;
@@ -286,13 +317,13 @@ void TimelineEditerView::DrawTimelineEditerView(CPaintDC& dcPaintDC)
 }
 
 // タイムラインコントロールパネル描画
-void TimelineEditerView::DrawTimelineControlPanel(void)
+void TimelineEditorView::DrawTimelineControlPanel(void)
 {
 	m_pTimelineControlPanelRect->DrawMyFillRect();
 }
 
 // シークバー描画
-void TimelineEditerView::DrawSeekBar(const CDC& dcPaintDC, const int iHeight)
+void TimelineEditorView::DrawSeekBar(const CDC& dcPaintDC, const int iHeight)
 {
 
 	// 背景塗りつぶし
@@ -343,7 +374,7 @@ void TimelineEditerView::DrawSeekBar(const CDC& dcPaintDC, const int iHeight)
 }
 
 // 大目盛り描画
-void TimelineEditerView::DrawBigScale(const CDC& dcPaintDC, const int iDrawFrame, const int iHeight, POINT& pScaleLine)
+void TimelineEditorView::DrawBigScale(const CDC& dcPaintDC, const int iDrawFrame, const int iHeight, POINT& pScaleLine)
 {
 
 	// TODO: 製品はタイムコードを表示
@@ -368,7 +399,7 @@ void TimelineEditerView::DrawBigScale(const CDC& dcPaintDC, const int iDrawFrame
 }
 
 // 中目盛り描画
-void TimelineEditerView::DrawMiddleScale(const CDC& dcPaintDC, const int iDrawFrame, const int iHeight, POINT& pScaleLine)
+void TimelineEditorView::DrawMiddleScale(const CDC& dcPaintDC, const int iDrawFrame, const int iHeight, POINT& pScaleLine)
 {
 
 #ifdef SEEKBAR_MIDDLESCALELINE_DRAW
@@ -397,7 +428,7 @@ void TimelineEditerView::DrawMiddleScale(const CDC& dcPaintDC, const int iDrawFr
 }
 
 // 小目盛り描画
-void TimelineEditerView::DrawSmallScale(const CDC& dcPaintDC, const int iDrawFrame, const int iHeight, POINT& pScaleLine)
+void TimelineEditorView::DrawSmallScale(const CDC& dcPaintDC, const int iDrawFrame, const int iHeight, POINT& pScaleLine)
 {
 	// 目盛り、ライン描画
 	DrawLine(iHeight, pScaleLine.x, m_pSeekBarRect->top + SEEKBARSMALLSCALE_TOPMARGIN, pScaleLine.x, m_pSeekBarRect->bottom,
@@ -412,14 +443,14 @@ void TimelineEditerView::DrawSmallScale(const CDC& dcPaintDC, const int iDrawFra
 }
 
 // トラックヘッダー描画
-void TimelineEditerView::DrawTrackHeader(void)
+void TimelineEditorView::DrawTrackHeader(void)
 {
 	// TODO: とりあえず今は枠だけ
 	m_pTrackHeaderRect->DrawMyBorderRect();
 }
 
 // トラック描画
-void TimelineEditerView::DrawTrack(const int iHeight, const CPaintDC& dcPaintDC)
+void TimelineEditorView::DrawTrack(const int iHeight, const CPaintDC& dcPaintDC)
 {
 	// TODO: とりあえず今は枠と名前だけ
 	TrackDataRectList* pTrackDataRectList = m_pTrackDataVideoManager->GetTrackDataRectList();
@@ -440,14 +471,14 @@ void TimelineEditerView::DrawTrack(const int iHeight, const CPaintDC& dcPaintDC)
 }
 
 // タイムラインデータエリア描画
-void TimelineEditerView::DrawTimelineDataRect(void)
+void TimelineEditorView::DrawTimelineDataRect(void)
 {
 	// TODO: とりあえず今は枠だけ
 	m_pTimelineDataRect->DrawMyBorderRect();
 }
 
 // クリップの描画を行う
-BOOL TimelineEditerView::DrawClip(const int iHeight, CPaintDC& dcPaintDC)
+BOOL TimelineEditorView::DrawClip(const int iHeight, CPaintDC& dcPaintDC)
 {
 	int iClipCount = 0;
 	TrackDataRectList* pTrackDataRectList = m_pTrackDataVideoManager->GetTrackDataRectList();
@@ -460,7 +491,7 @@ BOOL TimelineEditerView::DrawClip(const int iHeight, CPaintDC& dcPaintDC)
 }
 
 // トラック内の表示範囲内クリップをサーチして描画
-int TimelineEditerView::DrawClipInTrack(TrackDataRect* pTrackDataRect, const int iHeight, CPaintDC& dcPaintDC, int iClipTotalCount)
+int TimelineEditorView::DrawClipInTrack(TrackDataRect* pTrackDataRect, const int iHeight, CPaintDC& dcPaintDC, int iClipTotalCount)
 {
 	//TODO: 毎回全サーチするのではなくてvectorとかに表示範囲のオブジェクトを設定しておいて操作のたびにvectorを更新する
 	int iStartFrame = m_pTimelineDataOperator->GetOperatingLeftFrameNumber();
@@ -475,7 +506,7 @@ int TimelineEditerView::DrawClipInTrack(TrackDataRect* pTrackDataRect, const int
 	pClipDataLeft = nullptr;
 	if (iClipCount > 0)
 	{
-#ifdef PROTOTYPEMODE
+#ifdef _DEBUG
 		CString strFrameNumber;
 		double dPointX, dPointY;
 		HFONT hfDrawFont;
@@ -510,7 +541,7 @@ int TimelineEditerView::DrawClipInTrack(TrackDataRect* pTrackDataRect, const int
 			pClipDataLeft = pClipData;
 			++itr;
 
-#ifdef PROTOTYPEMODE
+#ifdef _DEBUG
 			int iOutPoint = pClipData->m_iTimelineInPoint + pClipData->GetDuration() - 1;
 			strFrameNumber.Format(_T(" L %d T %d R %d B %d I %d O %d D %d"), pClipData->left, pClipData->top, pClipData->right, pClipData->bottom, pClipData->m_iTimelineInPoint, iOutPoint, pClipData->GetDuration());
 			ChangeScreenPointToOpenGLPoint(5, 105 + (iClipTotalCount * 15), iHeight, dPointX, dPointY);
@@ -519,7 +550,7 @@ int TimelineEditerView::DrawClipInTrack(TrackDataRect* pTrackDataRect, const int
 #endif
 			++iClipTotalCount;
 		}
-#ifdef PROTOTYPEMODE
+#ifdef _DEBUG
 		DeleteObject(hfDrawFont);
 #endif
 	}
@@ -527,7 +558,7 @@ int TimelineEditerView::DrawClipInTrack(TrackDataRect* pTrackDataRect, const int
 }
 
 // 操作中クリップの描画を行う
-BOOL TimelineEditerView::DrawOperatingClip(const CDC& dcPaintDC, const int iHeight)
+BOOL TimelineEditorView::DrawOperatingClip(const CDC& dcPaintDC, const int iHeight)
 {
 	// TODO: 元のクリップの色を変える　元々各タイミングで実施するよう変更
 	m_pOperatingClipData->DrawOperatingOldRect(iHeight);
@@ -538,7 +569,7 @@ BOOL TimelineEditerView::DrawOperatingClip(const CDC& dcPaintDC, const int iHeig
 	{
 		m_pOperatingClipData->DrawSingleTrimRect(iHeight, m_pTimelineDataOperator->IsSingleInTrim());
 
-#ifdef PROTOTYPEMODE
+#ifdef _DEBUG
 		//TODO: デバッグ
 		CString strText;
 		double dPointX, dPointY;
@@ -593,7 +624,7 @@ BOOL TimelineEditerView::DrawOperatingClip(const CDC& dcPaintDC, const int iHeig
 		// ドロップ位置用
 		m_pOperatingClipData->DrawMovingRect(iHeight);
 
-#ifdef PROTOTYPEMODE
+#ifdef _DEBUG
 		//TODO: デバッグ
 		CString strText;
 		double dPointX, dPointY;
@@ -621,7 +652,7 @@ BOOL TimelineEditerView::DrawOperatingClip(const CDC& dcPaintDC, const int iHeig
 				static_cast<float>(rcMousePointRect.right), static_cast<float>(iHeight - rcMousePointRect.bottom));
 			m_pOperatingClipData->DrawOverlappingRect(iHeight);
 
-#ifdef PROTOTYPEMODE
+#ifdef _DEBUG
 			strText.Format(_T("MouseMoveClipLeftPoint  %d"), rcMousePointRect.left);
 			ChangeScreenPointToOpenGLPoint(700, 60, iHeight, dPointX, dPointY);
 			DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
@@ -639,7 +670,7 @@ BOOL TimelineEditerView::DrawOperatingClip(const CDC& dcPaintDC, const int iHeig
 }
 
 // タイムラインカーソルの描画を行う
-BOOL TimelineEditerView::DrawTimelineCursor(const CDC& dcPaintDC, const int iHeight)
+BOOL TimelineEditorView::DrawTimelineCursor(const CDC& dcPaintDC, const int iHeight)
 {
 	// ラインを描画
 	DrawLine(iHeight, m_iTimelineCursorPoint, m_pSeekBarRect->top, m_iTimelineCursorPoint, m_pTimelineDataRect->bottom,
@@ -674,7 +705,7 @@ BOOL TimelineEditerView::DrawTimelineCursor(const CDC& dcPaintDC, const int iHei
 }
 
 //// シャトル操作時のガイドラインを表示する
-//void TimelineEditerView::DrawShuttleGuideLine(CDC& dcMemDc, CDC& dcMovingMemDc, BLENDFUNCTION& blAlphaBlend, CRect& rcLineRect, float fGuideAreaWidth)
+//void TimelineEditorView::DrawShuttleGuideLine(CDC& dcMemDc, CDC& dcMovingMemDc, BLENDFUNCTION& blAlphaBlend, CRect& rcLineRect, float fGuideAreaWidth)
 //{
 //	int iGuideAreaWidth = static_cast<int>(floor(m_pTimelineDataRect.Width() * fGuideAreaWidth));
 //
@@ -709,7 +740,7 @@ BOOL TimelineEditerView::DrawTimelineCursor(const CDC& dcPaintDC, const int iHei
 
 */
 // Viewのサイズから各表示パネルの座標を計算して設定する。
-void TimelineEditerView::SetPanelRect(void)
+void TimelineEditorView::SetPanelRect(void)
 {
 	CRect rcViewRect;
 	GetClientRect(&rcViewRect);
@@ -795,7 +826,7 @@ void TimelineEditerView::SetPanelRect(void)
 
 */
 // 表示エリアの初期設定
-void TimelineEditerView::InitAreaRect(void)
+void TimelineEditorView::InitAreaRect(void)
 {
 	// TODO: 色は後で定数を作る
 	m_pDebugInfoPanelRect = new OpenGLRect();
@@ -835,7 +866,7 @@ void TimelineEditerView::InitAreaRect(void)
 }
 
 // 動作確認用オブジェクトの初期設定
-void TimelineEditerView::InitTestObject(void)
+void TimelineEditorView::InitTestObject(void)
 {
 	UUID uiTrackId, uiTrackRectId;
 
@@ -869,9 +900,13 @@ void TimelineEditerView::InitTestObject(void)
 }
 
 // 表示倍率関連のマップ作成
-void TimelineEditerView::CreateZoomMap(void)
+void TimelineEditorView::CreateZoomMap(void)
 {
 }
+
+
+
+
 
 
 

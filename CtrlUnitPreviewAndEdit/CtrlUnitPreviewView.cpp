@@ -12,7 +12,7 @@
 #include "CtrlUnitPreviewDoc.h"
 #include "CtrlUnitPreviewView.h"
 
-#include "TimelineEditerDialog.h"
+#include "TimelineEditorDialog.h"
 
 #include "MainFrm.h"
 
@@ -37,7 +37,6 @@ END_MESSAGE_MAP()
 // CCtrlUnitPreviewView コンストラクション/デストラクション
 
 CCtrlUnitPreviewView::CCtrlUnitPreviewView()
-	: m_fFullScrenn(false)
 {
 	// TODO: 構築コードをここに追加します。
 
@@ -65,6 +64,7 @@ void CCtrlUnitPreviewView::OnDraw(CDC* /*pDC*/)
 		return;
 
 	// TODO: この場所にネイティブ データ用の描画コードを追加します。
+
 }
 
 
@@ -98,6 +98,14 @@ int CCtrlUnitPreviewView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 	// TODO: ここに特定な作成コードを追加してください。
 
+	DWORD dwExStyle = GetWindowLong(this->m_hWnd, GWL_EXSTYLE);
+	dwExStyle &= ~WS_EX_WINDOWEDGE;
+	dwExStyle &= ~WS_EX_CLIENTEDGE;
+	SetWindowLong(this->m_hWnd, GWL_EXSTYLE, dwExStyle);
+
+	m_pMainWnd = static_cast<CMDIFrameWnd *>(AfxGetMainWnd());
+	m_pMainFrame = static_cast<CMainFrame *>(AfxGetMainWnd());
+
 	return 0;
 
 }
@@ -110,10 +118,10 @@ void CCtrlUnitPreviewView::OnDestroy()
 
 	// TODO: ここにメッセージ ハンドラー コードを追加します。
 
-	if (m_dlgTimelineEditer != nullptr)
+	if (m_dlgTimelineEditor != nullptr)
 	{
-		m_dlgTimelineEditer->EndDialog(0);
-		delete m_dlgTimelineEditer;
+		m_dlgTimelineEditor->EndDialog(0);
+		delete m_dlgTimelineEditor;
 	}
 
 }
@@ -123,7 +131,7 @@ void CCtrlUnitPreviewView::OnRButtonUp(UINT nFlags, CPoint point)
 {
 	// TODO: ここにメッセージ ハンドラー コードを追加するか、既定の処理を呼び出します。
 
-	m_dlgTimelineEditer->ShowWindow(SW_SHOW);
+	m_dlgTimelineEditor->ShowWindow(SW_SHOW);
 
 	OpenGLView::OnRButtonUp(nFlags, point);
 }
@@ -135,12 +143,12 @@ void CCtrlUnitPreviewView::OnInitialUpdate()
 	OpenGLView::OnInitialUpdate();
 
 	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
-	m_dlgTimelineEditer = new TimelineEditerDialog();
-	m_dlgTimelineEditer->Create(TimelineEditerDialog::IDD, GetDesktopWindow());
+	m_dlgTimelineEditor = new TimelineEditorDialog();
+	m_dlgTimelineEditor->Create(TimelineEditorDialog::IDD, GetDesktopWindow());
 	CRect rcRect;
 	CWnd* pParentWnd = GetParent();
 	pParentWnd->GetWindowRect(rcRect);
-	m_dlgTimelineEditer->SetPosition(rcRect);
+	m_dlgTimelineEditor->SetPosition(rcRect);
 
 }
 
@@ -158,25 +166,27 @@ void CCtrlUnitPreviewView::OnPaint()
 	// TODO: ここにメッセージ ハンドラー コードを追加します。
 	// 描画メッセージで OpenGLView::OnPaint() を呼び出さないでください。
 
-	::wglMakeCurrent(m_pDC->GetSafeHdc(), m_hRC);
+	wglMakeCurrent(m_pDC->GetSafeHdc(), m_hRC);
 
 	// 背景塗りつぶし
-	::glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	::glLineWidth(1);
-	::glColor4f(1, 0, 1, 1);
-	::glBegin(GL_QUADS);
-	::glVertex2d(0, 100);
-	::glVertex2d(100, 100);
-	::glVertex2d(100, 0);
-	::glVertex2d(0, 0);
-	::glEnd();
+	if (!m_pMainFrame->GetScreenMode())
+	{
+		glLineWidth(1);
+		glColor4f(1, 0, 1, 1);
+		glBegin(GL_QUADS);
+		glVertex2d(0, 100);
+		glVertex2d(100, 100);
+		glVertex2d(100, 0);
+		glVertex2d(0, 0);
+		glEnd();
+	}
+	glFlush();
+	SwapBuffers(m_pDC->GetSafeHdc());
 
-	::glFlush();
-	::SwapBuffers(m_pDC->GetSafeHdc());
-
-	::wglMakeCurrent(NULL, NULL);
+	wglMakeCurrent(NULL, NULL);
 }
 
 
@@ -184,37 +194,11 @@ void CCtrlUnitPreviewView::OnPaint()
 
 
 
-//void CCtrlUnitPreviewView::OnLButtonDblClk(UINT nFlags, CPoint point)
-//{
-//	// TODO: ここにメッセージ ハンドラー コードを追加するか、既定の処理を呼び出します。
-//
-//	//ChangeScreenSize();
-//	CWnd* pParentWnd = GetParent();
-//	CMDIFrameWndEx *pMdiFrame = (CMDIFrameWndEx *)AfxGetMainWnd();
-//	pMdiFrame->ShowFullScreen();
-//
-//	OpenGLView::OnLButtonDblClk(nFlags, point);
-//}
-//
-//
-//
-//// スクリーン表示サイズの切り替え
-//BOOL CCtrlUnitPreviewView::ChangeScreenSize()
-//{
-//	if (m_fFullScrenn)
-//	{
-//		m_fFullScrenn = FALSE;
-//
-//	}
-//	else
-//	{
-//		CWnd* pParentWnd = GetParent();
-//		pParentWnd->GetWindowRect(&m_rcWindowSize);
-//		SetWindowLong((HWND)pParentWnd, GWL_STYLE, WS_POPUP);
-//		AfxGetMainWnd()->PostMessage(WM_SYSCOMMAND, SC_MAXIMIZE);
-//		this->MoveWindow(m_rcWindowSize);
-//		m_fFullScrenn = TRUE;
-//	}	
-//
-//	return false;
-//}
+void CCtrlUnitPreviewView::OnLButtonDblClk(UINT nFlags, CPoint point)
+{
+	// TODO: ここにメッセージ ハンドラー コードを追加するか、既定の処理を呼び出します。
+
+	m_pMainWnd->SendMessage(WM_COMMAND, MAKEWPARAM(IDC_VIEW_FULLSCREEN, 0), NULL);
+
+	OpenGLView::OnLButtonDblClk(nFlags, point);
+}

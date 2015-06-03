@@ -16,6 +16,8 @@
 IMPLEMENT_DYNAMIC(CMainFrame, CMDIFrameWnd)
 
 BEGIN_MESSAGE_MAP(CMainFrame, CMDIFrameWnd)
+	ON_WM_CREATE()
+	ON_COMMAND(IDC_VIEW_FULLSCREEN, OnViewFullScreen)
 END_MESSAGE_MAP()
 
 // CMainFrame コンストラクション/デストラクション
@@ -31,7 +33,7 @@ CMainFrame::~CMainFrame()
 
 BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 {
-	if( !CMDIFrameWnd::PreCreateWindow(cs) )
+	if (!CMDIFrameWnd::PreCreateWindow(cs))
 		return FALSE;
 	// TODO: この位置で CREATESTRUCT cs を修正して Window クラスまたはスタイルを
 	//  修正してください。
@@ -64,3 +66,74 @@ void CMainFrame::Dump(CDumpContext& dc) const
 
 // CMainFrame メッセージ ハンドラー
 
+
+
+
+
+int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
+{
+	if (CMDIFrameWnd::OnCreate(lpCreateStruct) == -1)
+		return -1;
+
+	// TODO: ここに特定な作成コードを追加してください。
+
+	m_fFullScreen = FALSE;
+
+	return 0;
+}
+
+
+void CMainFrame::OnViewFullScreen()
+{
+	if (m_fFullScreen)
+	{
+		ASSERT(!m_rcWindowSize.IsRectEmpty());
+		this->MoveWindow(m_rcWindowSize.left, m_rcWindowSize.top, m_rcWindowSize.Width(), m_rcWindowSize.Height());
+		SetWindowLong(this->m_hWnd, GWL_STYLE, m_dwStyle);
+		SetWindowLong(this->m_hWnd, GWL_EXSTYLE, m_dwExStyle);
+
+		CMenu mMenu;
+		mMenu.LoadMenu(IDR_CtrlUnitPreviewTYPE);
+		SetMenu(&mMenu);
+		DeleteObject(mMenu);
+
+		SetWindowPos(NULL, m_rcWindowSize.left, m_rcWindowSize.top, m_rcWindowSize.Width(), m_rcWindowSize.Height(), SWP_NOZORDER | SWP_FRAMECHANGED);
+		
+		m_rcWindowSize.SetRectEmpty();
+		m_fFullScreen = FALSE;
+	}
+	else
+	{
+		HMONITOR hm;
+		MONITORINFO mi;
+		GetWindowRect(&m_rcWindowSize);
+		RECT rect;
+		rect = static_cast<RECT>(m_rcWindowSize);
+		hm = MonitorFromRect(&rect, MONITOR_DEFAULTTONEAREST);
+		mi.cbSize = sizeof(mi);
+		GetMonitorInfo(hm, &mi);
+		const RECT& rcMonitor = mi.rcMonitor;
+
+		SetMenu(NULL);
+		m_dwStyle = GetWindowLong(this->m_hWnd, GWL_STYLE);
+		SetWindowLong(this->m_hWnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+
+		m_dwExStyle = GetWindowLong(this->m_hWnd, GWL_EXSTYLE);
+		DWORD dwExStyle = m_dwExStyle;
+		dwExStyle &= ~WS_EX_WINDOWEDGE;
+		dwExStyle &= ~WS_EX_CLIENTEDGE;		
+		SetWindowLong(this->m_hWnd, GWL_EXSTYLE, dwExStyle);
+
+		SetWindowPos(NULL, rcMonitor.left, rcMonitor.top, rcMonitor.right - rcMonitor.left, rcMonitor.bottom - rcMonitor.top, SWP_NOZORDER | SWP_FRAMECHANGED);
+
+		//CMDIChildWnd* pWnd = MDIGetActive();
+		//CView* pView = pWnd->GetActiveView();
+		//CRect wrect;
+		//pView->GetClientRect(&wrect);
+		//CString str;
+		//str.Format(_T("L %d T %d R %d B %d"), wrect.left, wrect.top, wrect.right, wrect.bottom);
+		//OutputDebugString(str + "\n");
+
+		m_fFullScreen = TRUE;
+	}
+}

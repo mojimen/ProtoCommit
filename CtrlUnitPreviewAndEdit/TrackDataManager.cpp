@@ -54,10 +54,10 @@ void TrackDataManager::DeleteTrackDataManager(void)
 	{
 		DeleteTrackData(0);
 	}
-	assert(m_TrackDataInfoList.size() == 0);
-	assert(m_TrackDataRectList.size() == 0);
-	assert(m_TrackDataInfoMap.size() == 0);
-	assert(m_TrackDataRectMap.size() == 0);
+	ASSERT(m_TrackDataInfoList.size() == 0);
+	ASSERT(m_TrackDataRectList.size() == 0);
+	ASSERT(m_TrackDataInfoMap.size() == 0);
+	ASSERT(m_TrackDataRectMap.size() == 0);
 }
 
 // トラックデータの削除
@@ -107,9 +107,9 @@ BOOL TrackDataManager::DeleteTrackData(const UINT iLayerNumber)
 	TrackDataRectList::iterator itrRectList = find(m_TrackDataRectList.begin(), m_TrackDataRectList.end(), uiTrackRectId);
 	m_TrackDataRectList.erase(itrRectList);
 
-	assert(m_TrackDataInfoList.size() == m_TrackDataRectList.size());
-	assert(m_TrackDataInfoList.size() == m_TrackDataInfoMap.size());
-	assert(m_TrackDataInfoList.size() == m_TrackDataRectMap.size());
+	ASSERT(m_TrackDataInfoList.size() == m_TrackDataRectList.size());
+	ASSERT(m_TrackDataInfoList.size() == m_TrackDataInfoMap.size());
+	ASSERT(m_TrackDataInfoList.size() == m_TrackDataRectMap.size());
 
 	return TRUE;
 }
@@ -117,8 +117,8 @@ BOOL TrackDataManager::DeleteTrackData(const UINT iLayerNumber)
 // 生成したトラック情報データを管理情報に登録する。
 BOOL TrackDataManager::SetTrackData(const UINT iLayerNumber, const UUID& uiTrackId, TrackDataInfo* pTrackDataInfo, const UUID& uiTrackRectId, TrackDataRect* pTrackDataRect)
 {
-	assert(pTrackDataInfo != nullptr);
-	assert(pTrackDataRect != nullptr);
+	ASSERT(pTrackDataInfo != nullptr);
+	ASSERT(pTrackDataRect != nullptr);
 
 	if ((pTrackDataInfo != nullptr) && (pTrackDataRect != nullptr))
 	{
@@ -180,7 +180,7 @@ TrackDataInfo* TrackDataManager::GetTrackDataInfo(const UUID& uiTrackDataId)
 		{
 			return (*itr).second;
 		}
-		assert(itr != m_TrackDataInfoMap.end());
+		ASSERT(itr != m_TrackDataInfoMap.end());
 	}
 	return nullptr;
 }
@@ -196,7 +196,7 @@ TrackDataRect* TrackDataManager::GetTrackDataRect(const UUID& uiTrackDataRectId)
 		{
 			return (*itr).second;
 		}
-		assert(itr != m_TrackDataRectMap.end());
+		ASSERT(itr != m_TrackDataRectMap.end());
 	}
 	return nullptr;
 }
@@ -219,7 +219,7 @@ TrackDataInfo* TrackDataManager::GetTrackDataInfo(const UINT iLayerNumber)
 		{
 			return (*itr).second;
 		}
-		assert(itr != m_TrackDataInfoMap.end());
+		ASSERT(itr != m_TrackDataInfoMap.end());
 	}
 	return nullptr;
 }
@@ -253,7 +253,7 @@ TrackDataRect* TrackDataManager::GetTrackDataRect(const UINT iLayerNumber)
 		{
 			return (*itr).second;
 		}
-		assert(itr != m_TrackDataRectMap.end());
+		ASSERT(itr != m_TrackDataRectMap.end());
 	}
 	return nullptr;
 }

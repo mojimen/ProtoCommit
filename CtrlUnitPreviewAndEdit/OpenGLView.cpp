@@ -101,14 +101,14 @@ BOOL OpenGLView::InitGLContext()
 		return FALSE;
 	}
 	if (!SetupPixelFormat()) return FALSE;
-	if ((m_hRC = ::wglCreateContext(m_pDC->GetSafeHdc())) == 0) {
+	if ((m_hRC = wglCreateContext(m_pDC->GetSafeHdc())) == 0) {
 		return FALSE;
 	}
-	if (::wglMakeCurrent(m_pDC->GetSafeHdc(), m_hRC) == FALSE) {
+	if (wglMakeCurrent(m_pDC->GetSafeHdc(), m_hRC) == FALSE) {
 		return FALSE;
 	}
-	::glEnable(GL_BLEND);
-	::glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	return TRUE;
 }
@@ -136,11 +136,11 @@ void OpenGLView::OnDestroy()
 
 	// TODO: ここにメッセージ ハンドラ コードを追加します。
 
-	if (::wglMakeCurrent(NULL, NULL) == FALSE) {
+	if (wglMakeCurrent(NULL, NULL) == FALSE) {
 		//	必要に応じてエラーハンドリング
 	}
 
-	if (::wglDeleteContext(m_hRC) == FALSE) {
+	if (wglDeleteContext(m_hRC) == FALSE) {
 		//	必要に応じてエラーハンドリング
 	}
 
@@ -177,17 +177,17 @@ void OpenGLView::OnSize(UINT nType, int cx, int cy)
 		GLint height = rcViewRect.Height();
 
 		// OpenGL の初期設定
-		::wglMakeCurrent(m_pDC->GetSafeHdc(), m_hRC);
-		::glViewport(0, 0, width, height);
-		::glMatrixMode(GL_PROJECTION);
-		::glLoadIdentity();
-		::glOrtho(0.0, static_cast<GLdouble>(cx), 0.0, static_cast<GLdouble>(cy), -1.0, 1.0);
-		::glMatrixMode(GL_MODELVIEW);
+		wglMakeCurrent(m_pDC->GetSafeHdc(), m_hRC);
+		glViewport(0, 0, width, height);
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(0.0, static_cast<GLdouble>(cx), 0.0, static_cast<GLdouble>(cy), -1.0, 1.0);
+		glMatrixMode(GL_MODELVIEW);
 
-		::glGetIntegerv(GL_VIEWPORT, m_iViewport);
-		::glGetDoublev(GL_PROJECTION_MATRIX, m_dProjection);
-		::glGetDoublev(GL_MODELVIEW_MATRIX, m_dModelview);
-		::wglMakeCurrent(NULL, NULL);
+		glGetIntegerv(GL_VIEWPORT, m_iViewport);
+		glGetDoublev(GL_PROJECTION_MATRIX, m_dProjection);
+		glGetDoublev(GL_MODELVIEW_MATRIX, m_dModelview);
+		wglMakeCurrent(NULL, NULL);
 	}
 
 }

@@ -31,4 +31,6 @@ public:
 // 生成された、メッセージ割り当て関数
 protected:
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 };

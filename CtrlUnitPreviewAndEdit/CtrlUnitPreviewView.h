@@ -6,7 +6,8 @@
 
 #include "OpenGLView.h"
 
-class TimelineEditerDialog;
+class CMainFrame;
+class TimelineEditorDialog;
 
 class CCtrlUnitPreviewView : public OpenGLView
 {
@@ -45,21 +46,17 @@ public:
 
 
 private:
-	TimelineEditerDialog* m_dlgTimelineEditer;
+	TimelineEditorDialog* m_dlgTimelineEditor;
 
 public:
 	afx_msg void OnDestroy();
 	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
 	virtual void OnInitialUpdate();
 	afx_msg void OnPaint();
-	//afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
-	//// スクリーン表示サイズの切り替え
-	//BOOL ChangeScreenSize();
+	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
 private:
-	BOOL m_fFullScrenn;
-	BOOL m_fMaximized;
-	CRect m_rcWindowSize;
-	//CREATESTRUCT& m_csMainWindow;
+	CMDIFrameWnd* m_pMainWnd;
+	CMainFrame* m_pMainFrame;
 };
 
 #ifndef _DEBUG  // CtrlUnitPreviewView.cpp のデバッグ バージョン

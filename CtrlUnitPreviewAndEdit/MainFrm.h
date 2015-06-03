@@ -33,6 +33,19 @@ public:
 protected:
 	DECLARE_MESSAGE_MAP()
 
+public:
+	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
+	afx_msg void OnViewFullScreen();
+
+private:
+	DWORD m_dwStyle;
+	DWORD m_dwExStyle;
+	CRect m_rcWindowSize;
+	BOOL m_fFullScreen;
+
+public:
+	BOOL GetScreenMode(void){ return m_fFullScreen; }
+
 };
 
 

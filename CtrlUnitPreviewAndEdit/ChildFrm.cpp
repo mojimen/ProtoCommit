@@ -16,6 +16,7 @@
 IMPLEMENT_DYNCREATE(CChildFrame, CMDIChildWnd)
 
 BEGIN_MESSAGE_MAP(CChildFrame, CMDIChildWnd)
+	ON_WM_CREATE()
 END_MESSAGE_MAP()
 
 // CChildFrame コンストラクション/デストラクション
@@ -59,3 +60,20 @@ void CChildFrame::Dump(CDumpContext& dc) const
 
 // CChildFrame メッセージ ハンドラー
 
+
+
+int CChildFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
+{
+	if (CMDIChildWnd::OnCreate(lpCreateStruct) == -1)
+		return -1;
+
+	// TODO: ここに特定な作成コードを追加してください。
+	DWORD dwExStyle = GetWindowLong(m_hWnd, GWL_EXSTYLE);
+	dwExStyle &= ~WS_EX_WINDOWEDGE;
+	dwExStyle &= ~WS_EX_CLIENTEDGE;
+	SetWindowLong(m_hWnd, GWL_EXSTYLE, dwExStyle);
+
+	SetWindowPos(NULL, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOZORDER | SWP_FRAMECHANGED);
+
+	return 0;
+}

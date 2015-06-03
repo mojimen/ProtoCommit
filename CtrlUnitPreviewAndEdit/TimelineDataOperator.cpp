@@ -10,6 +10,7 @@
 #include "TrackDataRect.h"
 #include "TrackDataInfo.h"
 #include "TrackDataManager.h"
+#include "DragAndDropOperator.h"
 
 
 
@@ -49,23 +50,26 @@ BOOL TimelineDataOperator::InitializeTimelineDataOperator(UUID& uiTimelineDataOp
 		return FALSE;
 	}
 	m_pTrackDataVideoManager = m_pTimelineDataManager->GetTrackDataManager(TRACKDATAMANAGER_VIDEO, m_uiTrackDataVideoManagerId);
-	assert(m_pTrackDataVideoManager);
+	ASSERT(m_pTrackDataVideoManager);
 	if (m_pTrackDataVideoManager == nullptr)
 	{
 		return FALSE;
 	}
 	m_pTrackDataAudioManager = m_pTimelineDataManager->GetTrackDataManager(TRACKDATAMANAGER_AUDIO, m_uiTrackDataAudioManagerId);
-	assert(m_pTrackDataAudioManager);
+	ASSERT(m_pTrackDataAudioManager);
 	if (m_pTrackDataAudioManager == nullptr)
 	{
 		return FALSE;
 	}
 	m_pClipDataManager = m_pTimelineDataManager->GetClipDataManager(m_uiClipDataManagerId);
-	assert(m_pClipDataManager);
+	ASSERT(m_pClipDataManager);
 	if (m_pClipDataManager == nullptr)
 	{
 		return FALSE;
 	}
+
+	m_pDropAndDragOperator = new DragAndDropOperator(this);
+	m_pDropAndDragOperator->Initialize(m_uiDropAndDragOperatorId);
 
 	m_fLButtonDown = FALSE;
 	m_fMove = FALSE;
@@ -141,9 +145,9 @@ BOOL TimelineDataOperator::OnLButtonDown(UINT nFlags, CPoint point)
 	{
 		// トラック判定
 		m_pSelectedTrack = IsPointInAnyTrack(point);
-		m_pSelectedTrackInfo = m_pSelectedTrack->GetTrackDataInfo();
 		if (m_pSelectedTrack != nullptr)
 		{
+			m_pSelectedTrackInfo = m_pSelectedTrack->GetTrackDataInfo();
 			m_pOperateToTrack = m_pSelectedTrack;
 			m_pOperateToTrackInfo = m_pSelectedTrackInfo;
 
@@ -436,7 +440,54 @@ BOOL TimelineDataOperator::OnMouseMove(UINT nFlags, CPoint point)
 	return FALSE;
 }
 
+// ドロップによるファイルのクリップ化
+BOOL TimelineDataOperator::OnDropFiles(const HDROP& hDropInfo, CString& strFileName)
+{
+	//ドロップされたファイルの個数をチェック
+	UINT uiCount = DragQueryFile(hDropInfo, ~0lu, NULL, 0);
+	if (uiCount != 1)
+	{
+		return FALSE;
+	}
 
+	// ドロップ先のトラックを特定
+	POINT poDorpPoint;
+	DragQueryPoint(hDropInfo, &poDorpPoint);
+	m_pSelectedTrack = m_pDropAndDragOperator->GetDropTrack(poDorpPoint);
+	if (m_pSelectedTrack == nullptr)
+	{
+		return FALSE;
+	}
+
+	// ファイル名を取得
+	UINT uiLen = DragQueryFile(hDropInfo, 0, NULL, 0);
+	DragQueryFile(hDropInfo, 0, strFileName.GetBuffer(uiLen + 1), uiLen + 1);
+	strFileName.ReleaseBuffer();
+
+	// ファイル拡張子チェック
+	if (!(m_pDropAndDragOperator->CheckFileNameExtension(strFileName)))
+	{
+		return FALSE;
+	}
+
+	// ファイル形式チェック
+	CString strFilePath;
+	UINT uiIn = 0, uiOut = 0;
+	if (!(m_pDropAndDragOperator->CheckDropFile(strFileName, strFilePath, uiIn, uiOut)))
+	{
+		return FALSE;
+	}
+	
+	// クリップデータを作成する
+	int iFrame = 0, iDropFrame = 0;
+	m_pSelectedTrackInfo = m_pSelectedTrack->GetTrackDataInfo();
+	iDropFrame = ChangeDisplayPointToTimelineFramePosition(poDorpPoint, iFrame);
+	if (m_pDropAndDragOperator->CreateClipDataFromDropFile(m_pSelectedTrackInfo, iDropFrame, static_cast<PCTSTR>(strFilePath), uiIn, uiOut))
+	{
+		return TRUE;
+	}
+	return FALSE;
+}
 
 
 // タイムラインデータ表示倍率の変更

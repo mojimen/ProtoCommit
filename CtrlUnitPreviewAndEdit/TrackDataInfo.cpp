@@ -54,7 +54,7 @@ void TrackDataInfo::DeleteTrackDataInfo(void)
 // 入力のフレームに存在するクリップを取得する（１つのみ）
 ClipDataRect* TrackDataInfo::GetClipDataInfo(const int iFrame, int& iInPoint)
 {
-	assert(iFrame >= 0);
+	ASSERT(iFrame >= 0);
 
 	if (m_mpClipDataRectMap.size() == 0)
 	{
@@ -82,7 +82,7 @@ ClipDataRect* TrackDataInfo::GetClipDataInfo(const int iFrame, int& iInPoint)
 // 入力のフレームに存在するクリップを全て取得
 int TrackDataInfo::GetClipDataAtFrame(const int iFrame, ClipDataPositionMap& mpClipMap)
 {
-	assert(iFrame >= 0);
+	ASSERT(iFrame >= 0);
 
 	int iSize = 0;
 	if (m_mpClipDataRectMap.size() == 0)
@@ -121,8 +121,8 @@ int TrackDataInfo::GetClipDataAtFrame(const int iFrame, ClipDataPositionMap& mpC
 // 入力のフレーム範囲に存在するクリップを取得
 int TrackDataInfo::GetClipDataInRange(const int iStartFrame, const int iEndFrame, ClipDataPositionMap& mpClipMap)
 {
-	assert(iStartFrame >= 0);
-	assert(iEndFrame >= iStartFrame);
+	ASSERT(iStartFrame >= 0);
+	ASSERT(iEndFrame >= iStartFrame);
 
 	int iSize = 0;
 	if (m_mpClipDataRectMap.size() == 0)

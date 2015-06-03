@@ -93,8 +93,8 @@ BOOL ClipDataManager::DeleteClipData(const UUID& uiClipId, const BOOL fInfoFlag 
 // 生成したクリップ情報データを管理情報に登録する。
 BOOL ClipDataManager::SetClipData(const UUID& uiClipId, ClipDataInfo* pClipDataInfo, const UUID& uiClipRectId, ClipDataRect* pClipDataRect)
 {
-	assert(pClipDataInfo != nullptr);
-	assert(pClipDataRect != nullptr);
+	ASSERT(pClipDataInfo != nullptr);
+	ASSERT(pClipDataRect != nullptr);
 
 	if ((pClipDataInfo != nullptr) && (pClipDataRect != nullptr))
 	{
@@ -145,7 +145,7 @@ ClipDataInfo* ClipDataManager::GetClipDataInfo(const UUID& uiClipId)
 		{
 			return (*itr).second;
 		}
-		assert(itr != m_ClipDataInfoMap.end());
+		ASSERT(itr != m_ClipDataInfoMap.end());
 	}
 	return nullptr;
 }
@@ -161,7 +161,7 @@ ClipDataRect* ClipDataManager::GetClipDataRect(const UUID& uiClipDataRectId)
 		{
 			return (*itr).second;
 		}
-		assert(itr != m_ClipDataRectMap.end());
+		ASSERT(itr != m_ClipDataRectMap.end());
 	}
 	return nullptr;
 }

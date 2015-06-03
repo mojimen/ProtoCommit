@@ -28,7 +28,9 @@ private:
 	std::map < int, FilterInfo > m_FilterMap;	//InPoint, FilterInfo 
 
 	// For ProtoType
-	CString strFilePath;
+#ifdef PROTOTYPEMODE
+	CString m_strFilePath;
+#endif
 
 private:
 	// クリップ表示データとのリンク項目
@@ -58,7 +60,9 @@ public:
 	void SetOutPoint(int iOutPoint) { m_iOutPoint = iOutPoint; }
 	void SetDuration(int iDuration) { m_iDuration = iDuration; }
 	void SetInOffset(int iInOffset) { m_iInOffset = iInOffset; }
-
+#ifdef PROTOTYPEMODE
+	void SetFilePath(PCTSTR strFilePath) { m_strFilePath = strFilePath; }
+#endif
 
 	// Getter
 	ClipDataTag GetTag(void) { return m_eClipDataInfoTag; }
@@ -69,7 +73,9 @@ public:
 	int GetOutPoint(void) { return m_iOutPoint; }
 	int GetDuration(void) { return m_iDuration; }
 	int GetInOffset(void) { return m_iInOffset; }
-
+#ifdef PROTOTYPEMODE
+	CString GetFilePath(void) { return m_strFilePath; }
+#endif
 	UUID GetClipDataRectId(void){ return m_uiClipRectId; }
 	ClipDataRect* GetClipDataRect(void){ return m_pClipDataRect; }
 

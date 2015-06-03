@@ -5,6 +5,8 @@
 #include "CtrlUnitPreviewAndEdit.h"
 #include "ClipDataRect.h"
 
+#include "ClipDataInfo.h"
+
 
 // ClipDataRect
 

@@ -7,8 +7,8 @@
 #define IDR_MAINFRAME                   128
 #define IDR_CtrlUnitPreviewTYPE         130
 #define ID_WINDOW_MANAGER               131
-#define IDD_DIALOG1                     310
-#define IDD_TIMELINEEDITER_DIALOG       310
+#define IDD_TIMELINEEditor_DIALOG       310
+#define IDC_VIEW_FULLSCREEN             311
 
 // Next default values for new objects
 // 
@@ -17,6 +17,6 @@
 #define _APS_NEXT_RESOURCE_VALUE        311
 #define _APS_NEXT_COMMAND_VALUE         32771
 #define _APS_NEXT_CONTROL_VALUE         1000
-#define _APS_NEXT_SYMED_VALUE           310
+#define _APS_NEXT_SYMED_VALUE           312
 #endif
 #endif
