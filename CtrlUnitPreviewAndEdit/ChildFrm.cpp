@@ -36,8 +36,9 @@ BOOL CChildFrame::PreCreateWindow(CREATESTRUCT& cs)
 	if( !CMDIChildWnd::PreCreateWindow(cs) )
 		return FALSE;
 
-	cs.style = WS_CHILD | WS_VISIBLE | WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU
-		| FWS_ADDTOTITLE | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_MAXIMIZE;
+	cs.style = WS_CHILD | WS_VISIBLE | WS_OVERLAPPED | WS_MAXIMIZE;
+	//cs.style = WS_CHILD | WS_VISIBLE | WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU
+	//	| FWS_ADDTOTITLE | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_MAXIMIZE;
 
 	return TRUE;
 }
@@ -57,3 +58,4 @@ void CChildFrame::Dump(CDumpContext& dc) const
 #endif //_DEBUG
 
 // CChildFrame メッセージ ハンドラー
+
