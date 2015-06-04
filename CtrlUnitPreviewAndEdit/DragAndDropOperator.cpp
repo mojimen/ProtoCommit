@@ -77,7 +77,7 @@ BOOL DragAndDropOperator::CheckFileNameExtension(const CString& strFileName)
 }
 
 // ドロップされたファイルの形式をチェックする
-BOOL DragAndDropOperator::CheckDropFile(PCTSTR pszFileName, CString& strClipFileName, UINT& uiIn, UINT& uiOut)
+BOOL DragAndDropOperator::CheckDropFile(PCTSTR pszFileName, CString& strClipFileName, UINT& uIn, UINT& uOut)
 {
 	CStdioFile sfOpenFile;
 	if (!(sfOpenFile.Open(static_cast<LPCTSTR>(pszFileName), CFile::modeRead)))
@@ -104,19 +104,16 @@ BOOL DragAndDropOperator::CheckDropFile(PCTSTR pszFileName, CString& strClipFile
 	{
 		return FALSE;
 	}
-	uiIn = _ttoi(strIn);
-	uiOut = _ttoi(strOut);
+	uIn = _ttoi(strIn);
+	uOut = _ttoi(strOut);
 	return TRUE;
 }
 
-// ドロップされたファイルからクリップデータを作成する
-BOOL DragAndDropOperator::CreateClipDataFromDropFile(TrackDataInfo* pTrackDataInfo, const UINT uiFrame, PCTSTR pszClipFileName, const UINT uiIn, const UINT uiOut)
+// クリップデータの基本情報を作成する
+int DragAndDropOperator::CreateClipData(ClipDataRect& pClipDataRect, PCTSTR pszClipFileName, const UINT& uIn, const UINT& uOut)
 {
-	UUID uiClipId, uiClipRectId;
-	m_pClipDataManager->CreateClipData(uiClipId, uiClipRectId);
-	ClipDataRect* pClipDataRect = m_pClipDataManager->GetClipDataRect(uiClipRectId);
-	ClipDataInfo* pClipDataInfo = pClipDataRect->GetClipDataInfo();
-	int iDuration = uiOut - uiIn;
+	ClipDataInfo* pClipDataInfo = pClipDataRect.GetClipDataInfo();
+	int iDuration = uOut - uIn;
 	if (iDuration < 0)
 	{
 		iDuration = iDuration * -1 + 1;
@@ -125,18 +122,45 @@ BOOL DragAndDropOperator::CreateClipDataFromDropFile(TrackDataInfo* pTrackDataIn
 	{
 		++iDuration;
 	}
-	pClipDataRect->m_iTimelineInPoint = uiFrame - static_cast<int>(floor(iDuration / 2));
-	pClipDataRect->m_iTimelineOutPoint = uiFrame - static_cast<int>(ceil(iDuration / 2)) - 1;
-	pClipDataRect->SetDuration(iDuration);
-	pClipDataInfo->SetInPoint(uiIn);
-	pClipDataInfo->SetOutPoint(uiOut);
+	pClipDataRect.SetDuration(iDuration);
+	pClipDataInfo->SetInPoint(uIn);
+	pClipDataInfo->SetOutPoint(uOut);
 	pClipDataInfo->SetDuration(iDuration);
 #ifdef PROTOTYPEMODE
 	pClipDataInfo->SetFilePath(pszClipFileName);
 #endif
-	pTrackDataInfo->AddClip(pClipDataRect->m_iTimelineInPoint, pClipDataRect);
+	return iDuration;
+}
+
+// ドロップされたファイルからクリップデータを作成する
+BOOL DragAndDropOperator::CreateClipDataFromDropFile(TrackDataInfo& pTrackDataInfo, const UINT& uFrame, PCTSTR pszClipFileName, const UINT& uIn, const UINT& uOut)
+{
+	UUID uiClipId, uiClipRectId;
+	m_pClipDataManager->CreateClipData(uiClipId, uiClipRectId);
+	ClipDataRect* pClipDataRect = m_pClipDataManager->GetClipDataRect(uiClipRectId);
+	int iDuration =  CreateClipData(*pClipDataRect, pszClipFileName, uIn, uOut);
+
+	SetClipDataInOutPoint(*pClipDataRect, uFrame, static_cast<UINT>(iDuration));
+
+	pClipDataRect->m_iTimelineInPoint = uFrame - static_cast<int>(floor(iDuration / 2));
+	pClipDataRect->m_iTimelineOutPoint = uFrame + static_cast<int>(ceil(iDuration / 2)) - 1;
+	pTrackDataInfo.AddClip(pClipDataRect->m_iTimelineInPoint, pClipDataRect);
 	return TRUE;
 }
 
+// クリップイデータのInOut点を設定する
+BOOL DragAndDropOperator::SetClipDataInOutPoint(ClipDataRect& pClipDataRect, const UINT& uFrame, const UINT& uDuration)
+{
+	ASSERT(uDuration > 0);
+	pClipDataRect.m_iTimelineInPoint = uFrame - static_cast<int>(floor(uDuration / 2));
+	pClipDataRect.m_iTimelineOutPoint = uFrame + static_cast<int>(ceil(uDuration / 2)) - 1;
+	if (pClipDataRect.m_iTimelineInPoint < 0)
+	{
+		pClipDataRect.m_iTimelineInPoint = 0;
+		pClipDataRect.m_iTimelineOutPoint = uDuration - 1;
+		return FALSE;
+	}
+	return TRUE;
+}
 
 

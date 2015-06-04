@@ -51,7 +51,7 @@ BOOL CCtrlUnitPreviewView::PreCreateWindow(CREATESTRUCT& cs)
 	// TODO: この位置で CREATESTRUCT cs を修正して Window クラスまたはスタイルを
 	//  修正してください。
 
-	return CView::PreCreateWindow(cs);
+	return OpenGLView::PreCreateWindow(cs);
 }
 
 // CCtrlUnitPreviewView 描画
@@ -121,6 +121,7 @@ void CCtrlUnitPreviewView::OnDestroy()
 	if (m_dlgTimelineEditor != nullptr)
 	{
 		m_dlgTimelineEditor->EndDialog(0);
+		m_dlgTimelineEditor->DestroyWindow();
 		delete m_dlgTimelineEditor;
 	}
 

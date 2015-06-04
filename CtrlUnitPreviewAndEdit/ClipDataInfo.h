@@ -27,6 +27,11 @@ private:
 	std::list<UUID> m_uiVALinkList;
 	std::map < int, FilterInfo > m_FilterMap;	//InPoint, FilterInfo 
 
+	// TODO: ïKóvÅH
+	int m_iTimelineInPoint;
+	int m_iTimelineOutPoint;
+
+
 	// For ProtoType
 #ifdef PROTOTYPEMODE
 	CString m_strFilePath;
@@ -39,8 +44,6 @@ private:
 
 
 public:
-	// TODO: privateâª
-	int m_iTimelineInPoint;
 
 	BOOL InitClipData(void);
 
@@ -60,8 +63,10 @@ public:
 	void SetOutPoint(int iOutPoint) { m_iOutPoint = iOutPoint; }
 	void SetDuration(int iDuration) { m_iDuration = iDuration; }
 	void SetInOffset(int iInOffset) { m_iInOffset = iInOffset; }
+	void SetTimelineInPoint(int iTimelineInPoint) { m_iTimelineInPoint = iTimelineInPoint; }
+	void SetTimelineOutPoint(int iTimelineOutPoint) { m_iTimelineOutPoint = iTimelineOutPoint; }
 #ifdef PROTOTYPEMODE
-	void SetFilePath(PCTSTR strFilePath) { m_strFilePath = strFilePath; }
+	void SetFilePath(PCTSTR pszFilePath) { m_strFilePath = pszFilePath; }
 #endif
 
 	// Getter
@@ -73,6 +78,8 @@ public:
 	int GetOutPoint(void) { return m_iOutPoint; }
 	int GetDuration(void) { return m_iDuration; }
 	int GetInOffset(void) { return m_iInOffset; }
+	int GetTimelineInPoint(void) { return m_iTimelineInPoint; }
+	int GetTimelineOutPoint(void) { return m_iTimelineOutPoint; }
 #ifdef PROTOTYPEMODE
 	CString GetFilePath(void) { return m_strFilePath; }
 #endif

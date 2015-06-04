@@ -6,6 +6,7 @@ class TrackDataManager;
 class TrackDataInfo;
 class TrackDataRect;
 class ClipDataManager;
+class ClipDataInfo;
 class ClipDataRect;
 class DragAndDropOperator;
 
@@ -29,6 +30,12 @@ private:
 
 	// 操作中クリップへのポインタ
 	ClipDataRect* m_pOperatingClipData;
+
+	// ドラッグ＆ドロップでドラッグ中のクリップ
+	ClipDataRect* m_pDragAndDropClipDataRect;
+	UUID m_uiDragAndDropClipDataRectId;
+	ClipDataInfo* m_pDragAndDropClipDataInfo;
+	UUID m_uiDragAndDropClipDataInfoId;
 
 	// TODO: 操作中トラックへのポインタ			複数選択時の考慮が必要
 	TrackDataRect* m_pSelectedTrack;		// 選択したクリップのあったトラック
@@ -54,6 +61,9 @@ private:
 	BOOL m_fSingleOutTrim;			// Out側SingleTrim操作中
 	BOOL m_fScrub;					// Scrub操作中
 	BOOL m_fDragShuttle;				// DragShuttle操作中
+	BOOL m_fDragAndDrop;				// Drag&Drop操作中
+	BOOL m_fAllowFile;				// Drag&Drop操作物のドロップ可否（形式チェック結果）
+	BOOL m_fAllowDrop;				// Drag&Drop操作可否
 
 	// タイムラインデータ管理
 	TimelineDataManager* m_pTimelineDataManager;
@@ -101,6 +111,10 @@ public:
 	BOOL OnRButtonUp(UINT nFlags, CPoint point);	//Lボタンの処理
 	BOOL OnMouseMove(UINT nFlags, CPoint point);	//マウス移動時の処理
 	BOOL OnDropFiles(const HDROP& hDropInfo, CString& strFileName);
+	BOOL OnDragEnter(COleDataObject* pDataObject, DWORD dwKeyState, const CPoint& point);
+	void OnDragLeave(void);
+	DROPEFFECT OnDragOver(COleDataObject* pDataObject, DWORD dwKeyState, const CPoint& point);
+	//BOOL OnDrop(COleDataObject* pDataObject, DROPEFFECT dropEffect, CPoint point);
 
 	BOOL ChangeDisplayScale(void);
 	void CalcTimelineDisplayRange(void);
@@ -147,6 +161,9 @@ public:
 	BOOL IsMove(void){ return m_fMove; }
 	BOOL IsScrub(void){ return m_fScrub; }
 	BOOL IsDragShuttle(void){ return m_fDragShuttle; }
+	BOOL IsDragAndDrop(void){ return m_fDragAndDrop; }
+	BOOL IsDropFileCrrect(void){ return m_fDragAndDrop && m_fAllowFile; }
+	BOOL EnableDrawDragRect(void){ return m_fDragAndDrop && m_fAllowFile && m_fAllowDrop; }
 
 	int GetTimelineCursorFramePosition(void){ return m_iTimelineCursorFramePosition; }
 	int GetLeftFrameNumber(void){ return m_iLeftFrameNumber; }
@@ -168,6 +185,7 @@ public:
 	int GetTimelineCursorPoint(void){ return m_iTimelineCursorPoint; }
 
 	ClipDataRect* GetOperatingClipData(void){ return m_pOperatingClipData; }
+	ClipDataRect* GetDragAndDropClipDataRect(void){ return m_pDragAndDropClipDataRect; }
 	CRect GetMousePointRect(void){ return m_rcMousePointRect; }
 	CPoint GetMousePointerLocation(void){ return m_poMousePointerLocation; }
 

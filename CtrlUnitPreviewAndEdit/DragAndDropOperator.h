@@ -48,8 +48,10 @@ public:
 	TrackDataRect* GetDropTrack(const POINT& point);
 	BOOL Initialize(UUID& uiDragAndDropOperatorId);
 	BOOL CheckFileNameExtension(const CString& strFileName);
-	BOOL CheckDropFile(PCTSTR pszFileName, CString& strClipFileName, UINT& iIn, UINT& iOut);
-	BOOL CreateClipDataFromDropFile(TrackDataInfo* pTrackDataInfo, const UINT uiFrame, PCTSTR pszClipFileName, const UINT uiIn, const UINT uiOut);
+	BOOL CheckDropFile(PCTSTR pszFileName, CString& strClipFileName, UINT& uIn, UINT& uOut);
+	int CreateClipData(ClipDataRect& pClipDataRect, PCTSTR pszClipFileName, const UINT& uIn, const UINT& uOut);
+	BOOL CreateClipDataFromDropFile(TrackDataInfo& pTrackDataInfo, const UINT& uFrame, PCTSTR pszClipFileName, const UINT& uIn, const UINT& uOut);
+	BOOL SetClipDataInOutPoint(ClipDataRect& pClipDataRect, const UINT& uFrame, const UINT& uDuration);
 
 private:
 	UUID m_uiDragAndDropOperatorId;

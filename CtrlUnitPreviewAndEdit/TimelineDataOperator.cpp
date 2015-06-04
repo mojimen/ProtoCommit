@@ -7,6 +7,7 @@
 
 #include "OpenGLRect.h"
 #include "ClipDataRect.h"
+#include "ClipDataInfo.h"
 #include "TrackDataRect.h"
 #include "TrackDataInfo.h"
 #include "TrackDataManager.h"
@@ -18,6 +19,25 @@
 
 TimelineDataOperator::TimelineDataOperator()
 {
+	m_fLButtonDown = FALSE;
+	m_fMove = FALSE;
+	m_fSingleInTrim = FALSE;
+	m_fSingleOutTrim = FALSE;
+	m_fScrub = FALSE;
+	m_fDragShuttle = FALSE;
+	m_fDragAndDrop = FALSE;
+	m_fAllowFile = FALSE;
+	m_fAllowDrop = FALSE;
+
+	m_iLeftFrameNumber = 0;
+	m_iRightFrameNumber = 0;
+	m_iTimelineCursorFramePosition = 0;
+	m_iOperatingTimelineCursorFramePosition = m_iTimelineCursorFramePosition;
+	m_iOperatingFrameCount = 0;
+	m_iOperatingClipFrameCount = 0;
+
+	m_iFramePerPoint = 0;
+	m_iPointPerFrame = 1;
 }
 
 TimelineDataOperator::~TimelineDataOperator()
@@ -26,15 +46,6 @@ TimelineDataOperator::~TimelineDataOperator()
 
 BOOL TimelineDataOperator::InitializeTimelineDataOperator(UUID& uiTimelineDataOperatorId)
 {
-	if (RPC_S_OK == UuidCreate(&m_uiTimelineDataOperatorId))
-	{
-		uiTimelineDataOperatorId = m_uiTimelineDataOperatorId;
-	}
-	else
-	{
-		return FALSE;
-	}
-
 	m_pTimelineEditPanelRect = new OpenGLRect();
 	m_pTimelineEditHeaderRect = new OpenGLRect();
 	m_pTimelineControlPanelRect = new OpenGLRect();
@@ -69,25 +80,37 @@ BOOL TimelineDataOperator::InitializeTimelineDataOperator(UUID& uiTimelineDataOp
 	}
 
 	m_pDropAndDragOperator = new DragAndDropOperator(this);
+	ASSERT(m_pDropAndDragOperator);
+	if (m_pDropAndDragOperator == nullptr)
+	{
+		return FALSE;
+	}
 	m_pDropAndDragOperator->Initialize(m_uiDropAndDragOperatorId);
 
-	m_fLButtonDown = FALSE;
-	m_fMove = FALSE;
-	m_fSingleInTrim = FALSE;
-	m_fSingleOutTrim = FALSE;
-	m_fScrub = FALSE;
-	m_fDragShuttle = FALSE;
+	m_pClipDataManager->CreateClipData(m_uiDragAndDropClipDataInfoId, m_uiDragAndDropClipDataRectId);
+	m_pDragAndDropClipDataRect = m_pClipDataManager->GetClipDataRect(m_uiDragAndDropClipDataRectId);
+	ASSERT(m_pDragAndDropClipDataRect);
+	if (m_pDragAndDropClipDataRect == nullptr)
+	{
+		return FALSE;
+	}
+	m_pDragAndDropClipDataInfo = m_pDragAndDropClipDataRect->GetClipDataInfo();
+	ASSERT(m_pDragAndDropClipDataInfo);
+	if (m_pDragAndDropClipDataInfo == nullptr)
+	{
+		return FALSE;
+	}
 
-	m_iLeftFrameNumber = 0;
-	m_iRightFrameNumber = 0;
-	m_iTimelineCursorFramePosition = 0;
-	m_iOperatingTimelineCursorFramePosition = m_iTimelineCursorFramePosition;
-	m_iOperatingFrameCount = 0;
-	m_iOperatingClipFrameCount = 0;
-
-	m_iFramePerPoint = 0;
-	m_iPointPerFrame = 1;
 	ChangeDisplayScale();
+
+	if (RPC_S_OK == UuidCreate(&m_uiTimelineDataOperatorId))
+	{
+		uiTimelineDataOperatorId = m_uiTimelineDataOperatorId;
+	}
+	else
+	{
+		return FALSE;
+	}
 
 	return TRUE;
 }
@@ -100,6 +123,11 @@ void TimelineDataOperator::DeleteTimelineDataOperator(void)
 		m_pTimelineDataManager->DeleteTimelineDataManager();
 		delete m_pTimelineDataManager;
 	}
+	if (m_pDropAndDragOperator)
+	{
+		delete m_pDropAndDragOperator;
+	}
+
 	if (m_pTimelineEditPanelRect)
 	{
 		delete m_pTimelineEditPanelRect;
@@ -443,9 +471,31 @@ BOOL TimelineDataOperator::OnMouseMove(UINT nFlags, CPoint point)
 // ドロップによるファイルのクリップ化
 BOOL TimelineDataOperator::OnDropFiles(const HDROP& hDropInfo, CString& strFileName)
 {
+	m_fDragAndDrop = FALSE;
+	m_fAllowDrop = FALSE;
+
 	//ドロップされたファイルの個数をチェック
-	UINT uiCount = DragQueryFile(hDropInfo, ~0lu, NULL, 0);
-	if (uiCount != 1)
+	UINT uCount = DragQueryFile(hDropInfo, ~0lu, NULL, 0);
+	if (uCount != 1)
+	{
+		return FALSE;
+	}
+
+	// ファイル名を取得
+	UINT uLen = DragQueryFile(hDropInfo, 0, NULL, 0);
+	DragQueryFile(hDropInfo, 0, strFileName.GetBuffer(uLen + 1), uLen + 1);
+	strFileName.ReleaseBuffer();
+
+	// ファイル拡張子チェック
+	if (!(m_pDropAndDragOperator->CheckFileNameExtension(strFileName)))
+	{
+		return FALSE;
+	}
+
+	// ファイル形式チェック
+	CString strFilePath;
+	UINT uIn = 0, uOut = 0;
+	if (!(m_pDropAndDragOperator->CheckDropFile(strFileName, strFilePath, uIn, uOut)))
 	{
 		return FALSE;
 	}
@@ -459,9 +509,47 @@ BOOL TimelineDataOperator::OnDropFiles(const HDROP& hDropInfo, CString& strFileN
 		return FALSE;
 	}
 
+	// クリップデータを作成する
+	int iFrame = 0, iDropFrame = 0;
+	m_pSelectedTrackInfo = m_pSelectedTrack->GetTrackDataInfo();
+	iDropFrame = ChangeDisplayPointToTimelineFramePosition(poDorpPoint, iFrame);
+	if (m_pDropAndDragOperator->CreateClipDataFromDropFile(*m_pSelectedTrackInfo, iDropFrame, static_cast<PCTSTR>(strFilePath), uIn, uOut))
+	{
+		return TRUE;
+	}
+	return FALSE;
+}
+
+// ドラッグ＆ドロップ開始
+BOOL TimelineDataOperator::OnDragEnter(COleDataObject* pDataObject, DWORD dwKeyState, const CPoint& point)
+{
+	m_fDragAndDrop = TRUE;
+	m_fAllowFile = FALSE;
+	m_fAllowDrop = FALSE;
+
+	// ファイルか？
+	if (!(pDataObject->IsDataAvailable(CF_HDROP)))
+	{
+		return FALSE;
+	}
+	STGMEDIUM st;
+	if (!(pDataObject->GetData(CF_HDROP, &st)))
+	{
+		return FALSE;
+	}
+
+	HDROP hDropInfo = static_cast<HDROP>(st.hGlobal);
+	const UINT uCount = ::DragQueryFile(hDropInfo, (UINT)-1, NULL, 0);
+	//ドロップされたファイルの個数をチェック
+	if (uCount != 1)
+	{
+		return FALSE;
+	}
+
 	// ファイル名を取得
-	UINT uiLen = DragQueryFile(hDropInfo, 0, NULL, 0);
-	DragQueryFile(hDropInfo, 0, strFileName.GetBuffer(uiLen + 1), uiLen + 1);
+	CString strFileName;
+	UINT uLen = DragQueryFile(hDropInfo, 0, NULL, 0);
+	DragQueryFile(hDropInfo, 0, strFileName.GetBuffer(uLen + 1), uLen + 1);
 	strFileName.ReleaseBuffer();
 
 	// ファイル拡張子チェック
@@ -472,22 +560,86 @@ BOOL TimelineDataOperator::OnDropFiles(const HDROP& hDropInfo, CString& strFileN
 
 	// ファイル形式チェック
 	CString strFilePath;
-	UINT uiIn = 0, uiOut = 0;
-	if (!(m_pDropAndDragOperator->CheckDropFile(strFileName, strFilePath, uiIn, uiOut)))
+	UINT uIn = 0, uOut = 0;
+	if (!(m_pDropAndDragOperator->CheckDropFile(strFileName, strFilePath, uIn, uOut)))
 	{
 		return FALSE;
 	}
-	
-	// クリップデータを作成する
-	int iFrame = 0, iDropFrame = 0;
-	m_pSelectedTrackInfo = m_pSelectedTrack->GetTrackDataInfo();
-	iDropFrame = ChangeDisplayPointToTimelineFramePosition(poDorpPoint, iFrame);
-	if (m_pDropAndDragOperator->CreateClipDataFromDropFile(m_pSelectedTrackInfo, iDropFrame, static_cast<PCTSTR>(strFilePath), uiIn, uiOut))
+
+	m_fAllowFile = TRUE;
+
+	// 暫定クリップ作成
+	int iDuration = m_pDropAndDragOperator->CreateClipData(*m_pDragAndDropClipDataRect, static_cast<PCTSTR>(strFilePath), uIn, uOut);
+
+	// ドロップ先のトラックを特定
+	m_pSelectedTrack = m_pDropAndDragOperator->GetDropTrack(point);
+	if (m_pSelectedTrack != nullptr)
 	{
-		return TRUE;
+		// ドロップ可能な位置の場合、表示座標を確定する
+		int iFrame = 0, iDropFrame = 0;
+		iDropFrame = ChangeDisplayPointToTimelineFramePosition(point, iFrame);
+
+		m_pDropAndDragOperator->SetClipDataInOutPoint(*m_pDragAndDropClipDataRect, static_cast<UINT>(iDropFrame), static_cast<UINT>(iDuration));
+
+		CalcClipRectDisplayPoint(static_cast<CRect&>(*m_pDragAndDropClipDataRect), m_pDragAndDropClipDataRect, m_pSelectedTrack);
+		m_pDragAndDropClipDataRect->SetOperatingRect(static_cast<CRect>(m_pDragAndDropClipDataRect));
+		m_fAllowDrop = TRUE;
 	}
-	return FALSE;
+	else
+	{
+		// TODO: ドロップ不可の場合、マウス位置を中心に展開する・・・まだ未実装
+		m_pDragAndDropClipDataRect->m_iTimelineInPoint = 0;
+		m_pDragAndDropClipDataRect->m_iTimelineOutPoint = iDuration - 1;
+	}
+	return TRUE;
 }
+
+// ドラッグ＆ドロップ終了
+void TimelineDataOperator::OnDragLeave(void)
+{
+	m_fDragAndDrop = FALSE;
+	m_fAllowFile = FALSE;
+	m_fAllowDrop = FALSE;
+
+	// TODO: クリップのクリアをしたい！！
+	m_pDragAndDropClipDataRect->SetRectEmpty();
+	//m_pDragAndDropClipDataInfo;
+}
+
+// ドラッグ＆ドロップ移動
+DROPEFFECT TimelineDataOperator::OnDragOver(COleDataObject* pDataObject, DWORD dwKeyState, const CPoint& point)
+{
+	DROPEFFECT dDropEff = DROPEFFECT_COPY;
+	m_fAllowDrop = FALSE;
+
+	// ドロップ先のトラックを特定
+	m_pSelectedTrack = m_pDropAndDragOperator->GetDropTrack(point);
+	if (m_pSelectedTrack != nullptr)
+	{
+		// ドロップ可能な位置の場合、表示座標を確定する
+		int iFrame = 0, iDropFrame = 0;
+		iDropFrame = ChangeDisplayPointToTimelineFramePosition(point, iFrame);
+
+		m_pDropAndDragOperator->SetClipDataInOutPoint(*m_pDragAndDropClipDataRect, static_cast<UINT>(iDropFrame), 
+			static_cast<UINT>(m_pDragAndDropClipDataInfo->GetDuration()));
+
+		CalcClipRectDisplayPoint(static_cast<CRect&>(*m_pDragAndDropClipDataRect), m_pDragAndDropClipDataRect, m_pSelectedTrack);
+		m_pDragAndDropClipDataRect->SetOperatingRect(static_cast<CRect>(m_pDragAndDropClipDataRect));
+		m_fAllowDrop = TRUE;
+	}
+	else
+	{
+		// ドロップ不可の場合、0からで仮置き
+		m_pDragAndDropClipDataRect->m_iTimelineInPoint = 0;
+		m_pDragAndDropClipDataRect->m_iTimelineOutPoint = m_pDragAndDropClipDataInfo->GetDuration() - 1;
+		dDropEff = DROPEFFECT_NONE;
+		m_fAllowDrop = FALSE;
+	}
+
+	return dDropEff;
+}
+
+
 
 
 // タイムラインデータ表示倍率の変更

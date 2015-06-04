@@ -195,6 +195,8 @@ void OpenGLView::OnSize(UINT nType, int cx, int cy)
 int OpenGLView::DrawTextOnGL(PCTSTR pszStr, HDC hDC, HFONT& hfFont, GLfloat gfRed, GLfloat gfGreen, GLfloat gfBlue, GLfloat gfAlpha,
 	GLfloat gfPosX, GLfloat gfPosY, GLfloat gfPosZ, GLfloat gfMoveX)
 {
+	
+	
 	unsigned int textLength;	//引数で受け取ったテキストの長さ
 	WCHAR * unicodeText;		//textをUNICODEに変換した文字列を格納する
 	GLuint listbaseIdx;		//ディスプレイリストの最初のインデックス
@@ -209,18 +211,28 @@ int OpenGLView::DrawTextOnGL(PCTSTR pszStr, HDC hDC, HFONT& hfFont, GLfloat gfRe
 	//textの文字数を取得
 	textLength = (unsigned int)_mbstrlen(text);
 	if (textLength == -1)
+	{
+		delete text;
 		return -1;
+	}
 
 	//textの文字数分のワイド文字列の領域を作成
 	unicodeText = (WCHAR *)calloc(textLength + 1, sizeof(WCHAR));
 	if (unicodeText == NULL)
 	{
+		delete text;
+		free(unicodeText);
 		return -2;
 	}
 
 	//取得したジョイントIDをUNICODEに変換する
 	if (MultiByteToWideChar(CP_ACP, 0, text, -1, unicodeText, (sizeof(WCHAR) * textLength) + 1) == 0)
+	{
+		delete text;
+		free(unicodeText);
 		return -3;
+	}
+	delete text;
 
 	HFONT hfOldFont = static_cast<HFONT>(SelectObject(hDC, hfFont));
 
@@ -234,6 +246,7 @@ int OpenGLView::DrawTextOnGL(PCTSTR pszStr, HDC hDC, HFONT& hfFont, GLfloat gfRe
 			//MessageBox(hwnd, "wglUseFontBitmaps() Error!!", "wgl Error", MB_OK);
 		}
 	}
+	free(unicodeText);
 
 	//文字色の指定
 	glColor3f(gfRed, gfGreen, gfBlue);
@@ -245,7 +258,7 @@ int OpenGLView::DrawTextOnGL(PCTSTR pszStr, HDC hDC, HFONT& hfFont, GLfloat gfRe
 	glRasterPos3f(gfPosX, gfPosY, gfPosZ);
 
 	//ディスプレイリストを実行する
-	for (unsigned int textCnt = 0; textCnt < textLength; textCnt++)
+	for (unsigned int textCnt = 0; textCnt < textLength; ++textCnt)
 	{
 		glCallList(listbaseIdx + (GLuint)textCnt);
 	}

@@ -20,7 +20,7 @@ IMPLEMENT_DYNCREATE(TimelineEditorView, OpenGLView)
 
 TimelineEditorView::TimelineEditorView()
 {
-
+	m_fInitialize = FALSE;
 }
 
 TimelineEditorView::~TimelineEditorView()
@@ -71,7 +71,7 @@ BOOL TimelineEditorView::PreCreateWindow(CREATESTRUCT& cs)
 {
 	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
 
-	//cs.dwExStyle |= WS_EX_ACCEPTFILES;
+	cs.dwExStyle |= WS_EX_ACCEPTFILES;
 
 	return OpenGLView::PreCreateWindow(cs);
 }
@@ -189,8 +189,10 @@ void TimelineEditorView::OnSize(UINT nType, int cx, int cy)
 	OpenGLView::OnSize(nType, cx, cy);
 
 	// TODO: ここにメッセージ ハンドラー コードを追加します。
-
-	SetPanelRect();
+	if (m_fInitialize)
+	{
+		SetPanelRect();
+	}
 
 }
 
@@ -198,6 +200,8 @@ void TimelineEditorView::OnSize(UINT nType, int cx, int cy)
 void TimelineEditorView::OnInitialUpdate()
 {
 	OpenGLView::OnInitialUpdate();
+
+	m_fInitialize = TRUE;
 
 	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
 	m_pTimelineDataOperator = new TimelineDataOperator();
@@ -287,8 +291,7 @@ void TimelineEditorView::DrawTimelineEditorView(CPaintDC& dcPaintDC)
 
 	if (m_pTimelineDataOperator->EnableDrawDragRect())
 	{
-		ClipDataRect* pClipRect = m_pTimelineDataOperator->GetDragAndDropClipDataRect();
-		pClipRect->DrawMyFillRect();
+		DrawDragAndDropClip(dcPaintDC, iHeight);
 	}
 
 
@@ -697,6 +700,44 @@ BOOL TimelineEditorView::DrawOperatingClip(const CDC& dcPaintDC, const int iHeig
 	return TRUE;
 }
 
+// ドラッグ＆ドロップ中のイメージを描画する
+BOOL TimelineEditorView::DrawDragAndDropClip(const CDC& dcPaintDC, const int iHeight)
+{
+	ClipDataRect* pClipRect = m_pTimelineDataOperator->GetDragAndDropClipDataRect();
+	pClipRect->DrawMovingRect(iHeight);
+
+#ifdef _DEBUG
+	//TODO: デバッグ
+	CString strText;
+	double dPointX, dPointY;
+	HFONT hfDrawFont;
+	CreateDrawFont(13, 0, DEFAULT_FONTFACE, hfDrawFont);
+	strText.Format(_T("DropClipInPoint  %d"), pClipRect->m_iTimelineInPoint);
+	ChangeScreenPointToOpenGLPoint(700, 15, iHeight, dPointX, dPointY);
+	DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
+	strText.Format(_T("DropClipLeftPoint  %d"), pClipRect->left);
+	ChangeScreenPointToOpenGLPoint(700, 30, iHeight, dPointX, dPointY);
+	DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
+	strText.Format(_T("DropClipOutPoint  %d"), pClipRect->m_iTimelineOutPoint);
+	ChangeScreenPointToOpenGLPoint(700, 45, iHeight, dPointX, dPointY);
+	DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
+	strText.Format(_T("DropClipRightPoint  %d"), pClipRect->right);
+	ChangeScreenPointToOpenGLPoint(700, 60, iHeight, dPointX, dPointY);
+	DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
+	strText.Format(_T("DropClipDuration  %d"), pClipRect->GetBorderColor());
+	ChangeScreenPointToOpenGLPoint(700, 75, iHeight, dPointX, dPointY);
+	DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
+	DeleteObject(hfDrawFont);
+#endif
+
+	return TRUE;
+}
+
 // タイムラインカーソルの描画を行う
 BOOL TimelineEditorView::DrawTimelineCursor(const CDC& dcPaintDC, const int iHeight)
 {
@@ -946,8 +987,6 @@ DROPEFFECT TimelineEditorView::OnDragEnter(COleDataObject* pDataObject, DWORD dw
 {
 	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
 
-	OutputDebugString(_T("Drag!!\n"));
-
 	m_pTimelineDataOperator->OnDragEnter(pDataObject, dwKeyState, point);
 	if (m_pTimelineDataOperator->EnableDrawDragRect())
 	{
@@ -961,7 +1000,9 @@ DROPEFFECT TimelineEditorView::OnDragEnter(COleDataObject* pDataObject, DWORD dw
 void TimelineEditorView::OnDragLeave()
 {
 	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
-	OutputDebugString(_T("Leave\n"));
+
+	m_pTimelineDataOperator->OnDragLeave();
+	Invalidate();
 
 	OpenGLView::OnDragLeave();
 }
@@ -970,11 +1011,11 @@ void TimelineEditorView::OnDragLeave()
 DROPEFFECT TimelineEditorView::OnDragOver(COleDataObject* pDataObject, DWORD dwKeyState, CPoint point)
 {
 	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
-	OutputDebugString(_T("Move\n"));
 
-	//m_pTimelineDataOperator->OnDragOver(pDataObject, dwKeyState, point);
+	Invalidate();
+	return m_pTimelineDataOperator->OnDragOver(pDataObject, dwKeyState, point);
 
-	return OpenGLView::OnDragOver(pDataObject, dwKeyState, point);
+	//return OpenGLView::OnDragOver(pDataObject, dwKeyState, point);
 }
 
 
