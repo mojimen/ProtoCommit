@@ -185,7 +185,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChildFrm.h" />
-    <ClInclude Include="ClipData.h" />
+    <ClInclude Include="DataObjectBase.h" />
     <ClInclude Include="ClipDataInfo.h" />
     <ClInclude Include="ClipDataManager.h" />
     <ClInclude Include="ClipDataRect.h" />
@@ -211,13 +211,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChildFrm.cpp" />
-    <ClCompile Include="ClipData.cpp" />
     <ClCompile Include="ClipDataInfo.cpp" />
     <ClCompile Include="ClipDataManager.cpp" />
     <ClCompile Include="ClipDataRect.cpp" />
     <ClCompile Include="CtrlUnitPreviewAndEdit.cpp" />
     <ClCompile Include="CtrlUnitPreviewDoc.cpp" />
     <ClCompile Include="CtrlUnitPreviewView.cpp" />
+    <ClCompile Include="DataObjectBase.cpp" />
     <ClCompile Include="DragAndDropOperator.cpp" />
     <ClCompile Include="MainFrm.cpp" />
     <ClCompile Include="OpenGLRect.cpp" />

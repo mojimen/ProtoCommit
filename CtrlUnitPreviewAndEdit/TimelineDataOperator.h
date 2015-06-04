@@ -6,7 +6,6 @@ class TrackDataManager;
 class TrackDataInfo;
 class TrackDataRect;
 class ClipDataManager;
-class ClipDataInfo;
 class ClipDataRect;
 class DragAndDropOperator;
 
@@ -32,10 +31,8 @@ private:
 	ClipDataRect* m_pOperatingClipData;
 
 	// ドラッグ＆ドロップでドラッグ中のクリップ
-	ClipDataRect* m_pDragAndDropClipDataRect;
-	UUID m_uiDragAndDropClipDataRectId;
-	ClipDataInfo* m_pDragAndDropClipDataInfo;
-	UUID m_uiDragAndDropClipDataInfoId;
+	ClipDataRect* m_pDnDClipDataRect;
+	PCTSTR m_pszDnDClipDataRectUUID;
 
 	// TODO: 操作中トラックへのポインタ			複数選択時の考慮が必要
 	TrackDataRect* m_pSelectedTrack;		// 選択したクリップのあったトラック
@@ -77,7 +74,7 @@ private:
 	TrackDataManager* m_pTrackDataMasterManager;
 	UUID m_uiTrackDataMasterManagerId;
 	ClipDataManager* m_pClipDataManager;
-	UUID m_uiClipDataManagerId;
+	UUID m_uiClipDataManagerUUID;
 
 	// オペレータ
 	DragAndDropOperator* m_pDropAndDragOperator;
@@ -185,7 +182,7 @@ public:
 	int GetTimelineCursorPoint(void){ return m_iTimelineCursorPoint; }
 
 	ClipDataRect* GetOperatingClipData(void){ return m_pOperatingClipData; }
-	ClipDataRect* GetDragAndDropClipDataRect(void){ return m_pDragAndDropClipDataRect; }
+	ClipDataRect* GetDragAndDropClipDataRect(void){ return m_pDnDClipDataRect; }
 	CRect GetMousePointRect(void){ return m_rcMousePointRect; }
 	CPoint GetMousePointerLocation(void){ return m_poMousePointerLocation; }
 

@@ -1,11 +1,12 @@
 #pragma once
 #include "ClipDataManager.h"
+#include "DataObjectBase.h"
 
 class ClipDataRect;
 
 // ClipDataInfo コマンド ターゲット
 
-class ClipDataInfo : public CObject
+class ClipDataInfo : public DataObjectBase
 {
 public:
 	ClipDataInfo();
@@ -13,8 +14,6 @@ public:
 	virtual ~ClipDataInfo();
 
 private:
-	ClipDataTag m_eClipDataInfoTag;
-	UUID m_uiClipId;
 	InfoKind m_eClipKind;
 	UUID m_uiFileId;
 	int m_iInPoint;
@@ -26,8 +25,6 @@ private:
 	std::list<UUID> m_uiAudioLevelPointList;
 	std::list<UUID> m_uiVALinkList;
 	std::map < int, FilterInfo > m_FilterMap;	//InPoint, FilterInfo 
-
-	// TODO: 必要？
 	int m_iTimelineInPoint;
 	int m_iTimelineOutPoint;
 
@@ -39,24 +36,16 @@ private:
 
 private:
 	// クリップ表示データとのリンク項目
-	UUID m_uiClipRectId;
+	UUID m_uiClipRectUUID;
 	ClipDataRect* m_pClipDataRect;
 
-
 public:
-
-	BOOL InitClipData(void);
-
-public:
-
-	BOOL InitializeClipId(UUID& uiClipId);
-	void SetClipDataRect(const UUID& uiClipRectId, ClipDataRect* pClipDataRect) { m_pClipDataRect = pClipDataRect; m_uiClipRectId = uiClipRectId; }
+	BOOL InitializeClipDataInfo(UUID& uiClipUUID);
+	void SetClipDataRect(const UUID& uiClipRectUUID, ClipDataRect* pClipDataRect) { m_pClipDataRect = pClipDataRect; m_uiClipRectUUID = uiClipRectUUID; }
 	BOOL DeleteClipData(void);
 
 
 	// Setter
-	void SetTag(ClipDataTag eTag) { m_eClipDataInfoTag = eTag; }
-	void SetClipId(UUID uiClipId) { m_uiClipId = uiClipId; }
 	void SetClipKind(InfoKind eClipKind) { m_eClipKind = eClipKind; }
 	void SetFileId(UUID uiFileId) { m_uiFileId = uiFileId; }
 	void SetInPoint(int iInPoint) { m_iInPoint = iInPoint; }
@@ -70,8 +59,9 @@ public:
 #endif
 
 	// Getter
-	ClipDataTag GetTag(void) { return m_eClipDataInfoTag; }
-	UUID GetClipId(void) { return m_uiClipId; }
+	DataTag GetTag(void) { return m_eTag; }
+	UUID GetClipInfoUUID(void) { return m_uiUUID; }
+	PCTSTR GetClipInfoStrUUID(void) { return static_cast<PCTSTR>(m_strUUID); }
 	InfoKind GetClipKind(void) { return m_eClipKind; }
 	UUID GetFileId(void) { return m_uiFileId; }
 	int GetInPoint(void) { return m_iInPoint; }
@@ -83,7 +73,7 @@ public:
 #ifdef PROTOTYPEMODE
 	CString GetFilePath(void) { return m_strFilePath; }
 #endif
-	UUID GetClipDataRectId(void){ return m_uiClipRectId; }
+	UUID GetClipDataRectUUID(void){ return m_uiClipRectUUID; }
 	ClipDataRect* GetClipDataRect(void){ return m_pClipDataRect; }
 
 };

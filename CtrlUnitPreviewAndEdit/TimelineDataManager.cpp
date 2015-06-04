@@ -58,7 +58,7 @@ BOOL TimelineDataManager::InitializeTimelineDataManager(UUID& uiTimelineDataMana
 		delete m_pClipDataManager;
 	}
 	m_pClipDataManager = new ClipDataManager();
-	m_pClipDataManager->InitializeClipDataManagerId(m_uiClipDataManagerId);
+	m_pClipDataManager->InitializeClipDataManagerId(m_uiClipDataManagerUUID);
 
 	return TRUE;
 }
@@ -98,7 +98,7 @@ void TimelineDataManager::DeleteTimelineDataManager(void)
 	{
 		m_pClipDataManager->DeleteClipDataManager();
 		delete m_pClipDataManager;
-		UuidCreateNil(&m_uiClipDataManagerId);
+		UuidCreateNil(&m_uiClipDataManagerUUID);
 		m_pClipDataManager = nullptr;
 	}
 }
@@ -127,9 +127,9 @@ TrackDataManager* TimelineDataManager::GetTrackDataManager(const TrackDataTag eT
 }
 
 // クリップデータマネージャーを取得する
-ClipDataManager* TimelineDataManager::GetClipDataManager(UUID &uiClipDataManagerId)
+ClipDataManager* TimelineDataManager::GetClipDataManager(UUID &uiClipDataManagerUUID)
 {
-	uiClipDataManagerId = m_uiClipDataManagerId;
+	uiClipDataManagerUUID = m_uiClipDataManagerUUID;
 	return m_pClipDataManager;
 }
 

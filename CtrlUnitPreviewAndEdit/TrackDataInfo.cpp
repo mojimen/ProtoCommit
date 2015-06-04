@@ -52,7 +52,7 @@ void TrackDataInfo::DeleteTrackDataInfo(void)
 }
 
 // 入力のフレームに存在するクリップを取得する（１つのみ）
-ClipDataRect* TrackDataInfo::GetClipDataInfo(const int iFrame, int& iInPoint)
+ClipDataRect* TrackDataInfo::GetClipDataRect(const int iFrame, int& iInPoint)
 {
 	ASSERT(iFrame >= 0);
 
@@ -231,12 +231,12 @@ ClipDataRect* TrackDataInfo::CheckMove(ClipDataRect* pCheckClipData, const int i
 {
 	ClipDataRect* pClipData;
 	int iPoint;
-	pClipData = GetClipDataInfo(iInPoint, iPoint);
+	pClipData = GetClipDataRect(iInPoint, iPoint);
 	if ((pClipData != nullptr) && (pClipData != pCheckClipData))
 	{
 		return pClipData;
 	}
-	pClipData = GetClipDataInfo(iOutPoint, iPoint);
+	pClipData = GetClipDataRect(iOutPoint, iPoint);
 	if ((pClipData != nullptr) && (pClipData != pCheckClipData))
 	{
 		return pClipData;

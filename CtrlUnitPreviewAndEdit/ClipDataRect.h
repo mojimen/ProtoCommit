@@ -1,10 +1,12 @@
 #pragma once
-#include "OpenGLRect.h"
+#include "ClipDataInfo.h"
 #include "ClipDataManager.h"
+#include "DataObjectBase.h"
+#include "OpenGLRect.h"
 
 // ClipDataRect コマンド ターゲット
 
-class ClipDataRect : public OpenGLRect
+class ClipDataRect : public DataObjectBase, public OpenGLRect
 {
 
 public:
@@ -12,19 +14,14 @@ public:
 	virtual ~ClipDataRect();
 
 private:
-	ClipDataTag m_eClipDataRectTag;
-	UUID m_uiClipRectId;
-	InfoKind m_eClipKind;
-	int m_iDuration;
-	//int m_iInOffset;
-	//UUID m_uiMetaInfoId;
-	//std::list<UUID> m_uiVideoLevelPointList;
-	//std::list<UUID> m_uiAudioLevelPointList;
-	//std::list<UUID> m_uiVALinkList;
-	BOOL m_fLocked;
 	//std::map < int, FilterInfo > m_FilterMap;	//InPoint, FilterInfo 
-	int m_iTimelineInPoint;
-	int m_iTimelineOutPoint;
+
+	// クリップ情報データとのリンク項目
+	UUID m_uiClipInfoUUID;
+	ClipDataInfo* m_pClipDataInfo;
+
+	// For Edit
+	BOOL m_fLocked;
 
 	// ForView
 	OpenGLRect m_rcOperatingRect;
@@ -38,20 +35,7 @@ private:
 	float m_fSingleTrimBorderColor[4][4];	// 全クリップ共通。コントローラーで設定すべき？
 
 public:
-	// TODO: private化
-
-private:
-	// クリップ情報データとのリンク項目
-	UUID m_uiClipId;
-	ClipDataInfo* m_pClipDataInfo;
-
-
-
-
-
-public:
-	BOOL InitClipData(void);
-	BOOL InitializeClipRectId(UUID& uiClipRectId);
+	BOOL InitializeClipDataRect(UUID& uiClipRectId);
 	BOOL DeleteClipData(void);
 	void DrawSingleTrimRect(int iHeight, BOOL fInTrim);
 	void DrawMovingRect(int iHeight);
@@ -60,12 +44,6 @@ public:
 	void InitializeOperatingRect(void) { m_rcOperatingRect.SetRectEmpty(); }
 
 	// Setter
-	void SetTag(ClipDataTag eTag) { m_eClipDataRectTag = eTag; }
-	void SetClipRectId(UUID uiClipId) { m_uiClipRectId = uiClipId; }
-	void SetClipKind(InfoKind eClipKind) { m_eClipKind = eClipKind; }
-	void SetDuration(int iDuration) { m_iDuration = iDuration; }
-	void SetTimelineInPoint(int iTimelineInPoint) { m_iTimelineInPoint = iTimelineInPoint; }
-	void SetTimelineOutPoint(int iTimelineOutPoint) { m_iTimelineOutPoint = iTimelineOutPoint; }
 	void SetOperatingRect(const CRect& rcRect) { m_rcOperatingRect.CopyRect(rcRect); }
 	void CopyOperatingRectToOriginalRect(void) { CopyRect(m_rcOperatingRect); m_rcOperatingRect.SetRectEmpty(); }
 	void SetOverlappingVert(const float fLeft, const float fTop, const float fRight, const float fBottom);
@@ -93,18 +71,27 @@ public:
 		const float fR2, const float fG2, const float fB2, const float fA2,
 		const float fR3, const float fG3, const float fB3, const float fA3,
 		const float fR4, const float fG4, const float fB4, const float fA4);
-	void SetClipDataInfo(const UUID& uiClipId, ClipDataInfo* pClipDataInfo) { m_pClipDataInfo = pClipDataInfo; m_uiClipId = uiClipId; }
+	void SetClipDataInfo(const UUID& uiClipInfoUUID, ClipDataInfo* pClipDataInfo) { m_pClipDataInfo = pClipDataInfo; m_uiClipInfoUUID = uiClipInfoUUID; }
+
+	// ClipDataInfo Setter
+	void SetFileId(UUID uiFileId) { m_pClipDataInfo->SetFileId(uiFileId); }
+	void SetInPoint(int iInPoint) { m_pClipDataInfo->SetInPoint(iInPoint); }
+	void SetOutPoint(int iOutPoint) { m_pClipDataInfo->SetOutPoint(iOutPoint); }
+	void SetDuration(int iDuration) { m_pClipDataInfo->SetDuration(iDuration); }
+	void SetInOffset(int iInOffset) { m_pClipDataInfo->SetInOffset(iInOffset); }
+	void SetTimelineInPoint(int iTimelineInPoint) { m_pClipDataInfo->SetTimelineInPoint(iTimelineInPoint); }
+	void SetTimelineOutPoint(int iTimelineOutPoint) { m_pClipDataInfo->SetTimelineOutPoint(iTimelineOutPoint); }
+#ifdef PROTOTYPEMODE
+	void SetFilePath(PCTSTR pszFilePath) { m_pClipDataInfo->SetFilePath(pszFilePath); }
+#endif
 
 
 	// Getter
-	ClipDataTag GetTag(void) { return m_eClipDataRectTag; }
-	UUID GetClipRectId(void) { return m_uiClipRectId; }
-	InfoKind GetClipKind(void) { return m_eClipKind; }
-	int GetDuration(void) { return m_iDuration; }
-	UUID GetClipDataInfoId(void){ return m_uiClipId; }
+	DataTag GetClipRectTag(void) { return m_eTag; }
+	UUID GetClipRectUUID(void) { return m_uiUUID; }
+	PCTSTR GetClipRectStrUUID(void) { return static_cast<PCTSTR>(m_strUUID); }
+	UUID GetClipDataInfoUUID(void){ return m_uiClipInfoUUID; }
 	ClipDataInfo* GetClipDataInfo(void){ return m_pClipDataInfo; }
-	int GetTimelineInPoint(void) { return m_iTimelineInPoint; }
-	int GetTimelineOutPoint(void) { return m_iTimelineOutPoint; }
 
 	CRect* GetOperatingRect(void) { return &m_rcOperatingRect; }
 	float(*GetOverlappingVert(void))[3] { return m_fOverlappingVert; }
@@ -115,5 +102,20 @@ public:
 	void GetOperatingOldColor(float(&fColor)[4][4]);
 	void GetOverlappingColor(float(&fColor)[4][4]);
 	void GetSingleTrimBorderColor(float(&fColor)[4][4]);
+
+	// ClipDataInfo Getter
+	DataTag GetClipInfoTag(void) { return m_pClipDataInfo->GetTag(); }
+	UUID GetClipInfoId(void) { return m_pClipDataInfo->GetClipInfoUUID(); }
+	InfoKind GetClipKind(void) { return m_pClipDataInfo->GetClipKind(); }
+	UUID GetFileId(void) { return m_pClipDataInfo->GetFileId(); }
+	int GetInPoint(void) { return m_pClipDataInfo->GetInPoint(); }
+	int GetOutPoint(void) { return m_pClipDataInfo->GetOutPoint(); }
+	int GetDuration(void) { return m_pClipDataInfo->GetDuration(); }
+	int GetInOffset(void) { return m_pClipDataInfo->GetInOffset(); }
+	int GetTimelineInPoint(void) { return m_pClipDataInfo->GetTimelineInPoint(); }
+	int GetTimelineOutPoint(void) { return m_pClipDataInfo->GetTimelineOutPoint(); }
+#ifdef PROTOTYPEMODE
+	CString GetFilePath(void) { return m_pClipDataInfo->GetFilePath(); }
+#endif
 
 };

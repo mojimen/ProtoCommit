@@ -92,7 +92,7 @@ public:
 	UUID m_uiTrackDataMasterManagerId;
 
 	ClipDataManager* m_pClipDataManager;
-	UUID m_uiClipDataManagerId;
+	UUID m_uiClipDataManagerUUID;
 
 	BOOL InitializeTimelineDataManager(UUID& uiTrackDataManagerId);
 	void DeleteTimelineDataManager(void);

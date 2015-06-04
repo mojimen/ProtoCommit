@@ -12,7 +12,6 @@
 
 ClipDataRect::ClipDataRect()
 {
-	m_eClipDataRectTag = CLIPDATARECT;
 }
 
 ClipDataRect::~ClipDataRect()
@@ -21,8 +20,8 @@ ClipDataRect::~ClipDataRect()
 
 
 // ClipDataRect メンバー関数
-// とりあえずの初期値設定
-BOOL ClipDataRect::InitClipData(void)
+// 初期値設定
+BOOL ClipDataRect::InitializeClipDataRect(UUID& uiClipRectUUID)
 {
 	SetColor(CLIPCOLOR_BRUSH_FLOAT, CLIPCOLOR_BRUSH_FLOAT, CLIPCOLOR_BRUSH_FLOAT, CLIPCOLOR_BRUSH_FLOAT);
 	SetBorderColor(CLIPBORDERCOLOR_BRUSH_FLOAT, CLIPBORDERCOLOR_BRUSH_FLOAT, CLIPBORDERCOLOR_BRUSH_FLOAT, CLIPBORDERCOLOR_BRUSH_FLOAT);
@@ -33,21 +32,12 @@ BOOL ClipDataRect::InitClipData(void)
 	SetOverlappingColor(CLIPCOLOR_OVERLAPPING_BRUSH_FLOAT, CLIPCOLOR_OVERLAPPING_BRUSH_FLOAT, CLIPCOLOR_OVERLAPPING_BRUSH_FLOAT, CLIPCOLOR_OVERLAPPING_BRUSH_FLOAT);
 	SetSingleTrimBorderColor(CLIPCOLOR_SINGLETRIMINGBORDER_BRUSH_FLOAT, CLIPCOLOR_SINGLETRIMINGBORDER_BRUSH_FLOAT, CLIPCOLOR_SINGLETRIMINGBORDER_BRUSH_FLOAT, CLIPCOLOR_SINGLETRIMINGBORDER_BRUSH_FLOAT);
 
-	return TRUE;
-}
-
-
-BOOL ClipDataRect::InitializeClipRectId(UUID& uiClipRectId)
-{
-	if (RPC_S_OK == UuidCreate(&m_uiClipRectId))
+	if (InitializeData(A_CLIPDATARECT))
 	{
-		uiClipRectId = m_uiClipRectId;
+		uiClipRectUUID = m_uiUUID;
 		return TRUE;
 	}
-	else
-	{
-		return FALSE;
-	}
+	return FALSE;
 }
 
 // クリップ情報データ削除

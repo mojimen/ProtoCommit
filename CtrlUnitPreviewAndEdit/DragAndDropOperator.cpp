@@ -11,7 +11,6 @@
 #include "TrackDataInfo.h"
 #include "ClipDataManager.h"
 #include "ClipDataRect.h"
-#include "ClipDataInfo.h"
 
 // DragAndDropOperator
 
@@ -39,7 +38,7 @@ BOOL DragAndDropOperator::Initialize(UUID& uiDragAndDropOperatorId)
 	m_pTrackDataAudioManager = m_pTimelineDataManager->GetTrackDataManager(TRACKDATAMANAGER_AUDIO, m_uiTrackDataAudioManagerId);
 	m_pTrackDataInfoManager = m_pTimelineDataManager->GetTrackDataManager(TRACKDATAMANAGER_INFO, m_uiTrackDataInfoManagerId);
 	m_pTrackDataMasterManager = m_pTimelineDataManager->GetTrackDataManager(TRACKDATAMANAGER_MASTER, m_uiTrackDataMasterManagerId);
-	m_pClipDataManager = m_pTimelineDataManager->GetClipDataManager(m_uiClipDataManagerId);
+	m_pClipDataManager = m_pTimelineDataManager->GetClipDataManager(m_uiClipDataManagerUUID);
 
 	if (RPC_S_OK == UuidCreate(&m_uiDragAndDropOperatorId))
 	{
@@ -114,7 +113,6 @@ BOOL DragAndDropOperator::CheckDropFile(PCTSTR pszFileName, CString& strClipFile
 // クリップデータの基本情報を作成する
 int DragAndDropOperator::CreateClipData(ClipDataRect& pClipDataRect, PCTSTR pszClipFileName, const UINT& uIn, const UINT& uOut)
 {
-	ClipDataInfo* pClipDataInfo = pClipDataRect.GetClipDataInfo();
 	int iDuration = uOut - uIn;
 	if (iDuration < 0)
 	{
@@ -125,11 +123,11 @@ int DragAndDropOperator::CreateClipData(ClipDataRect& pClipDataRect, PCTSTR pszC
 		++iDuration;
 	}
 	pClipDataRect.SetDuration(iDuration);
-	pClipDataInfo->SetInPoint(uIn);
-	pClipDataInfo->SetOutPoint(uOut);
-	pClipDataInfo->SetDuration(iDuration);
+	pClipDataRect.SetInPoint(uIn);
+	pClipDataRect.SetOutPoint(uOut);
+	pClipDataRect.SetDuration(iDuration);
 #ifdef PROTOTYPEMODE
-	pClipDataInfo->SetFilePath(pszClipFileName);
+	pClipDataRect.SetFilePath(pszClipFileName);
 #endif
 	return iDuration;
 }
@@ -137,9 +135,9 @@ int DragAndDropOperator::CreateClipData(ClipDataRect& pClipDataRect, PCTSTR pszC
 // ドロップされたファイルからクリップデータを作成する
 BOOL DragAndDropOperator::CreateClipDataFromDropFile(TrackDataInfo& pTrackDataInfo, const UINT& uFrame, PCTSTR pszClipFileName, const UINT& uIn, const UINT& uOut)
 {
-	UUID uiClipId, uiClipRectId;
-	m_pClipDataManager->CreateClipData(uiClipId, uiClipRectId);
-	ClipDataRect* pClipDataRect = m_pClipDataManager->GetClipDataRect(uiClipRectId);
+	PCTSTR pszClipInfoUUID = nullptr, pszClipRectUUID = nullptr;
+	m_pClipDataManager->CreateClipData(pszClipInfoUUID, pszClipRectUUID);
+	ClipDataRect* pClipDataRect = m_pClipDataManager->GetClipDataRect(pszClipRectUUID);
 	int iDuration =  CreateClipData(*pClipDataRect, pszClipFileName, uIn, uOut);
 
 	SetClipDataInOutPoint(*pClipDataRect, uFrame, static_cast<UINT>(iDuration));

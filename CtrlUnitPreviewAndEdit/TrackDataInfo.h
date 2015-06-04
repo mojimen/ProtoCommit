@@ -39,17 +39,13 @@ public:
 	void DeleteTrackDataInfo(void);
 
 	// Getter
-	ClipDataRect* GetClipDataInfo(const int iFrame, int& iInPoint);
+	ClipDataRect* GetClipDataRect(const int iFrame, int& iInPoint);
 	int GetClipDataAtFrame(const int iFrame, ClipDataPositionMap& mpClipMap);
 	int GetClipDataInRange(const int iStartFrame, const int iEndFrame, ClipDataPositionMap& mpClipMap);
 	UUID GetTrackRectId(void) { return m_uiTrackRectId; }
 	TrackDataRect* GetTrackDataRect(void) { return m_pTrackDataRect; }
 
 	// Setter
-	//void SetTrackRectId(UUID uiTrackRectId) { m_uiTrackRectId = uiTrackRectId; }
-	//void SetTrackDataRect(TrackDataRect* pTrackDataRect) { m_pTrackDataRect = pTrackDataRect; }
-
-
 
 	// TODO: これはコントローラーに？
 	int CheckClipInSingleOutTrimRange(int iStartFrame, int iEndFrame);

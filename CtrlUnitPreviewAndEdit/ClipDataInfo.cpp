@@ -12,7 +12,6 @@
 
 ClipDataInfo::ClipDataInfo()
 {
-	m_eClipDataInfoTag = CLIPDATAINFO;
 	m_eClipKind = VIDEO;
 	m_iInPoint = 0;
 	m_iOutPoint = 0;
@@ -32,17 +31,16 @@ ClipDataInfo::~ClipDataInfo()
 
 
 // ClipDataInfo メンバー関数
-BOOL ClipDataInfo::InitializeClipId(UUID& uiClipId)
+
+// 初期設定
+BOOL ClipDataInfo::InitializeClipDataInfo(UUID& uiClipUUID)
 {
-	if (RPC_S_OK == UuidCreate(&m_uiClipId))
+	if (InitializeData(A_CLIPDATAINFO))
 	{
-		uiClipId = m_uiClipId;
+		uiClipUUID = m_uiUUID;
 		return TRUE;
 	}
-	else
-	{
-		return FALSE;
-	}
+	return FALSE;
 }
 
 // クリップ表示データ削除

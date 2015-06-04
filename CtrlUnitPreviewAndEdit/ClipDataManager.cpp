@@ -12,7 +12,6 @@
 
 ClipDataManager::ClipDataManager()
 {
-	m_eClipDataManagerTag = CLIPDATAMANAGER;
 }
 
 ClipDataManager::~ClipDataManager()
@@ -23,18 +22,15 @@ ClipDataManager::~ClipDataManager()
 
 // ClipDataManager メンバー関数
 
-// UUID設定
-BOOL ClipDataManager::InitializeClipDataManagerId(UUID& uiClipDataManagerId)
+// 初期設定
+BOOL ClipDataManager::InitializeClipDataManagerId(UUID& uiClipDataManagerUUID)
 {
-	if (RPC_S_OK == UuidCreate(&m_uiClipDataManagerId))
+	if (InitializeData(A_CLIPDATAMANAGER))
 	{
-		uiClipDataManagerId = m_uiClipDataManagerId;
+		uiClipDataManagerUUID = m_uiUUID;
 		return TRUE;
 	}
-	else
-	{
-		return FALSE;
-	}
+	return FALSE;
 }
 
 // クリップ全データ削除
@@ -58,32 +54,33 @@ void ClipDataManager::DeleteClipDataManager(void)
 }
 
 // クリップデータ削除
-BOOL ClipDataManager::DeleteClipData(const UUID& uiClipId, const BOOL fInfoFlag /*= TRUE*/)
+BOOL ClipDataManager::DeleteClipData(PCTSTR pszClipUUID, const BOOL fInfoFlag /*= FALSE*/)
 {	
-	PCTSTR pszClipId = nullptr;
-	if (ChangeUUIDToCString(uiClipId, pszClipId))
+	ASSERT(pszClipUUID != nullptr);
+	if ((pszClipUUID == nullptr) || (static_cast<CString>(pszClipUUID).IsEmpty()))
 	{
-		if (fInfoFlag)
+		return FALSE;
+	}
+	if (fInfoFlag)
+	{
+		ClipDataInfoMap::iterator itr = m_ClipDataInfoMap.find(static_cast<CString>(pszClipUUID));
+		if (itr != m_ClipDataInfoMap.end())
 		{
-			ClipDataInfoMap::iterator itr = m_ClipDataInfoMap.find(static_cast<CString>(pszClipId));
-			if (itr != m_ClipDataInfoMap.end())
-			{
-				ClipDataRect* pClipDataRect = (*itr).second->GetClipDataRect();
-				delete pClipDataRect;
-				delete (*itr).second;
-				return TRUE;
-			}
+			ClipDataRect* pClipDataRect = (*itr).second->GetClipDataRect();
+			delete pClipDataRect;
+			delete (*itr).second;
+			return TRUE;
 		}
-		else
+	}
+	else
+	{
+		ClipDataRectMap::iterator itr = m_ClipDataRectMap.find(static_cast<CString>(pszClipUUID));
+		if (itr != m_ClipDataRectMap.end())
 		{
-			ClipDataRectMap::iterator itr = m_ClipDataRectMap.find(static_cast<CString>(pszClipId));
-			if (itr != m_ClipDataRectMap.end())
-			{
-				ClipDataInfo* pClipDataInfo = (*itr).second->GetClipDataInfo();
-				delete pClipDataInfo;
-				delete (*itr).second;
-				return TRUE;
-			}
+			ClipDataInfo* pClipDataInfo = (*itr).second->GetClipDataInfo();
+			delete pClipDataInfo;
+			delete (*itr).second;
+			return TRUE;
 		}
 	}
 	return FALSE;
@@ -91,39 +88,36 @@ BOOL ClipDataManager::DeleteClipData(const UUID& uiClipId, const BOOL fInfoFlag 
 
 
 // 生成したクリップ情報データを管理情報に登録する。
-BOOL ClipDataManager::SetClipData(const UUID& uiClipId, ClipDataInfo* pClipDataInfo, const UUID& uiClipRectId, ClipDataRect* pClipDataRect)
+BOOL ClipDataManager::SetClipDataMap(PCTSTR pszClipInfoUUID, ClipDataInfo& cClipDataInfo, PCTSTR pszClipRectUUID, ClipDataRect& cClipDataRect)
 {
-	ASSERT(pClipDataInfo != nullptr);
-	ASSERT(pClipDataRect != nullptr);
-
-	if ((pClipDataInfo != nullptr) && (pClipDataRect != nullptr))
+	ASSERT(pszClipInfoUUID != nullptr);
+	ASSERT(pszClipRectUUID != nullptr);
+	if ((pszClipInfoUUID == nullptr) || (static_cast<CString>(pszClipInfoUUID).IsEmpty()) || (pszClipRectUUID == nullptr) || (static_cast<CString>(pszClipRectUUID).IsEmpty()))
 	{
-		PCTSTR pszClipId = nullptr, pszClipRectId = nullptr;
-
-		if ((ChangeUUIDToCString(uiClipId, pszClipId)) && (ChangeUUIDToCString(uiClipRectId, pszClipRectId)))
-		{
-			m_ClipDataInfoMap.insert(std::make_pair(static_cast<CString>(pszClipId), pClipDataInfo));
-			m_ClipDataRectMap.insert(std::make_pair(static_cast<CString>(pszClipRectId), pClipDataRect));
-			return TRUE;
-		}
+		return FALSE;
 	}
-	return FALSE;
+	m_ClipDataInfoMap.insert(std::make_pair(static_cast<CString>(pszClipInfoUUID), &cClipDataInfo));
+	m_ClipDataRectMap.insert(std::make_pair(static_cast<CString>(pszClipRectUUID), &cClipDataRect));
+	return TRUE;
 }
 
 // クリップデータを生成する。
-BOOL ClipDataManager::CreateClipData(UUID& uiClipId, UUID& uiClipRectId)
+BOOL ClipDataManager::CreateClipData(PCTSTR& pszClipInfoUUID, PCTSTR& pszClipRectUUID)
 {
 	ClipDataInfo* pClipDataInfo = new ClipDataInfo();
 	ClipDataRect* pClipDataRect = new ClipDataRect();
 
-	if (pClipDataInfo->InitializeClipId(uiClipId))
+	UUID uiClipInfoUUID, uiClipRectUUID;
+
+	if (pClipDataInfo->InitializeClipDataInfo(uiClipInfoUUID))
 	{
-		if (pClipDataRect->InitializeClipRectId(uiClipRectId))
+		if (pClipDataRect->InitializeClipDataRect(uiClipRectUUID))
 		{
-			pClipDataRect->InitClipData();
-			pClipDataRect->SetClipDataInfo(uiClipId, pClipDataInfo);
-			pClipDataInfo->SetClipDataRect(uiClipRectId, pClipDataRect);
-			SetClipData(uiClipId, pClipDataInfo, uiClipRectId, pClipDataRect);
+			pClipDataRect->SetClipDataInfo(uiClipInfoUUID, pClipDataInfo);
+			pClipDataInfo->SetClipDataRect(uiClipRectUUID, pClipDataRect);
+			SetClipDataMap(pClipDataInfo->GetClipInfoStrUUID(), *pClipDataInfo, pClipDataRect->GetClipRectStrUUID(), *pClipDataRect);
+			pszClipInfoUUID = pClipDataInfo->GetClipInfoStrUUID();
+			pszClipRectUUID = pClipDataRect->GetClipRectStrUUID();
 			return TRUE;
 		}
 	}
@@ -135,48 +129,35 @@ BOOL ClipDataManager::CreateClipData(UUID& uiClipId, UUID& uiClipRectId)
 
 
 // クリップ情報データのポインタを取得する
-ClipDataInfo* ClipDataManager::GetClipDataInfo(const UUID& uiClipId)
+ClipDataInfo* ClipDataManager::GetClipDataInfo(PCTSTR pszClipUUID)
 {
-	PCTSTR pszClipId = nullptr;
-	if (ChangeUUIDToCString(uiClipId, pszClipId))
+	ASSERT(pszClipUUID != nullptr);
+	if ((pszClipUUID == nullptr) || (static_cast<CString>(pszClipUUID).IsEmpty()))
 	{
-		ClipDataInfoMap::iterator itr = m_ClipDataInfoMap.find(pszClipId);
-		if (itr != m_ClipDataInfoMap.end())
-		{
-			return (*itr).second;
-		}
-		ASSERT(itr != m_ClipDataInfoMap.end());
+		return nullptr;
 	}
-	return nullptr;
+	ClipDataInfoMap::iterator itr = m_ClipDataInfoMap.find(pszClipUUID);
+	if (itr == m_ClipDataInfoMap.end())
+	{
+		ASSERT(itr != m_ClipDataInfoMap.end());
+		return nullptr;
+	}
+	return (*itr).second;
 }
 
 // クリップ表示データのポインタを取得する
-ClipDataRect* ClipDataManager::GetClipDataRect(const UUID& uiClipDataRectId)
+ClipDataRect* ClipDataManager::GetClipDataRect(PCTSTR pszClipUUID)
 {
-	PCTSTR pszClipRectId = nullptr;
-	if (ChangeUUIDToCString(uiClipDataRectId, pszClipRectId))
+	ASSERT(pszClipUUID != nullptr);
+	if ((pszClipUUID == nullptr) || (static_cast<CString>(pszClipUUID).IsEmpty()))
 	{
-		ClipDataRectMap::iterator itr = m_ClipDataRectMap.find(pszClipRectId);
-		if (itr != m_ClipDataRectMap.end())
-		{
-			return (*itr).second;
-		}
+		return nullptr;
+	}
+	ClipDataRectMap::iterator itr = m_ClipDataRectMap.find(pszClipUUID);
+	if (itr == m_ClipDataRectMap.end())
+	{
 		ASSERT(itr != m_ClipDataRectMap.end());
+		return nullptr;
 	}
-	return nullptr;
-}
-
-
-// UUIDの型変換
-BOOL ClipDataManager::ChangeUUIDToCString(const UUID& uiId, PCTSTR& pszId)
-{
-	if (RPC_S_OK == UuidToString(&uiId, &m_rwsId))
-	{
-		pszId = reinterpret_cast<PCTSTR>(m_rwsId);
-		return TRUE;
-	}
-	else
-	{
-		return FALSE;
-	}
+	return (*itr).second;
 }

@@ -42,7 +42,7 @@ public:
 	TrackDataManager* m_pTrackDataMasterManager;
 	UUID m_uiTrackDataMasterManagerId;
 	ClipDataManager* m_pClipDataManager;
-	UUID m_uiClipDataManagerId;
+	UUID m_uiClipDataManagerUUID;
 
 	// ドラッグ＆ドロップ操作
 	TrackDataRect* GetDropTrack(const POINT& point);

@@ -256,6 +256,52 @@ void TimelineEditorView::OnDropFiles(HDROP hDropInfo)
 	OpenGLView::OnDropFiles(hDropInfo);
 }
 
+// ドラッグ開始
+DROPEFFECT TimelineEditorView::OnDragEnter(COleDataObject* pDataObject, DWORD dwKeyState, CPoint point)
+{
+	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
+
+	m_pTimelineDataOperator->OnDragEnter(pDataObject, dwKeyState, point);
+	if (m_pTimelineDataOperator->EnableDrawDragRect())
+	{
+		return DROPEFFECT_COPY;
+		Invalidate();
+	}
+	return DROPEFFECT_NONE;
+	//return OpenGLView::OnDragEnter(pDataObject, dwKeyState, point);
+}
+
+// ドラッグ終了
+void TimelineEditorView::OnDragLeave()
+{
+	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
+
+	m_pTimelineDataOperator->OnDragLeave();
+	Invalidate();
+
+	OpenGLView::OnDragLeave();
+}
+
+// ドラッグ移動
+DROPEFFECT TimelineEditorView::OnDragOver(COleDataObject* pDataObject, DWORD dwKeyState, CPoint point)
+{
+	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
+
+	Invalidate();
+	return m_pTimelineDataOperator->OnDragOver(pDataObject, dwKeyState, point);
+
+	//return OpenGLView::OnDragOver(pDataObject, dwKeyState, point);
+}
+
+// ドロップ
+//BOOL TimelineEditorView::OnDrop(COleDataObject* pDataObject, DROPEFFECT dropEffect, CPoint point)
+//{
+//	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
+//	OutputDebugString(_T("Drop\n"));
+//
+//	return OpenGLView::OnDrop(pDataObject, dropEffect, point);
+//}
+
 
 /*
 
@@ -289,7 +335,7 @@ void TimelineEditorView::DrawTimelineEditorView(CPaintDC& dcPaintDC)
 		DrawOperatingClip(dcPaintDC, iHeight);
 	}
 
-	if (m_pTimelineDataOperator->EnableDrawDragRect())
+	if (m_pTimelineDataOperator->IsDragAndDrop())
 	{
 		DrawDragAndDropClip(dcPaintDC, iHeight);
 	}
@@ -575,7 +621,7 @@ int TimelineEditorView::DrawClipInTrack(TrackDataRect* pTrackDataRect, const int
 
 #ifdef _DEBUG
 			int iOutPoint = pClipData->GetTimelineInPoint() + pClipData->GetDuration() - 1;
-			strFrameNumber.Format(_T(" L %d T %d R %d B %d I %d O %d D %d"), pClipData->left, pClipData->top, pClipData->right, pClipData->bottom, pClipData->GetTimelineInPoint(), iOutPoint, pClipData->GetDuration());
+			strFrameNumber.Format(_T(" L:%d T:%d R:%d B:%d I:%d O:%d D:%d i:%d o:%d"), pClipData->left, pClipData->top, pClipData->right, pClipData->bottom, pClipData->GetTimelineInPoint(), pClipData->GetTimelineOutPoint(), pClipData->GetDuration(), pClipData->GetInPoint(), pClipData->GetOutPoint());
 			ChangeScreenPointToOpenGLPoint(5, 105 + (iClipTotalCount * 15), iHeight, dPointX, dPointY);
 			DrawTextOnGL(static_cast<PCTSTR>(pTrackDataRect->GetTrackName() + strFrameNumber), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 				static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
@@ -704,7 +750,16 @@ BOOL TimelineEditorView::DrawOperatingClip(const CDC& dcPaintDC, const int iHeig
 BOOL TimelineEditorView::DrawDragAndDropClip(const CDC& dcPaintDC, const int iHeight)
 {
 	ClipDataRect* pClipRect = m_pTimelineDataOperator->GetDragAndDropClipDataRect();
-	pClipRect->DrawMovingRect(iHeight);
+	if (m_pTimelineDataOperator->EnableDrawDragRect())
+	{
+		pClipRect->DrawMovingRect(iHeight);
+	}
+	else if (m_pTimelineDataOperator->IsDropFileCrrect())
+	{
+		pClipRect->SetOverlappingVert(static_cast<float>(pClipRect->left), static_cast<float>(iHeight - pClipRect->top),
+			static_cast<float>(pClipRect->right), static_cast<float>(iHeight - pClipRect->bottom));
+		pClipRect->DrawOverlappingRect(iHeight);
+	}
 
 #ifdef _DEBUG
 	//TODO: デバッグ
@@ -728,7 +783,7 @@ BOOL TimelineEditorView::DrawDragAndDropClip(const CDC& dcPaintDC, const int iHe
 	ChangeScreenPointToOpenGLPoint(700, 60, iHeight, dPointX, dPointY);
 	DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
-	strText.Format(_T("DropClipDuration  %d"), pClipRect->GetBorderColor());
+	strText.Format(_T("DropClipDuration  %d"), pClipRect->GetDuration());
 	ChangeScreenPointToOpenGLPoint(700, 75, iHeight, dPointX, dPointY);
 	DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
@@ -877,7 +932,7 @@ void TimelineEditorView::SetPanelRect(void)
 	{
 		pTrackDataRect = m_pTrackDataVideoManager->GetTrackDataRect(pTrackDataRectList->at(i));
 		pTrackDataRect->CopyRect(pTrackDataRectBefor);
-		pTrackDataRect->top = pTrackDataRectBefor->bottom + 1;
+		pTrackDataRect->top = pTrackDataRectBefor->bottom;
 		pTrackDataRect->bottom = pTrackDataRect->top + pTrackDataRect->GetHeight();
 		pTrackDataRect->SetVert(rcViewRect.Height());
 		pTrackDataRectBefor = pTrackDataRect;
@@ -943,26 +998,26 @@ void TimelineEditorView::InitTestObject(void)
 	m_pTrackDataVideoManager->CreateTrackData(1, uiTrackId, uiTrackRectId);
 	m_pTrackDataVideoManager->CreateTrackData(2, uiTrackId, uiTrackRectId);
 
-	UUID uiClipManagerId, uiClipId, uiClipRectId;
+	//UUID uiClipManagerUUID;
+	//PCTSTR pszClipInfoUUID = nullptr, pszClipRectUUID = nullptr;
+	//ClipDataRect* pClipDataRect = nullptr;
+	//m_pTimelineDataManager->GetClipDataManager(uiClipManagerUUID)->CreateClipData(pszClipInfoUUID, pszClipRectUUID);
+	//pClipDataRect = m_pTimelineDataManager->GetClipDataManager(uiClipManagerUUID)->GetClipDataRect(pszClipRectUUID);
+	//pClipDataRect->SetTimelineInPoint(101);
+	//pClipDataRect->SetDuration(10);
+	//m_pTrackDataVideoManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->GetTimelineInPoint(), pClipDataRect);
 
-	ClipDataRect* pClipDataRect = nullptr;
-	m_pTimelineDataManager->GetClipDataManager(uiClipManagerId)->CreateClipData(uiClipId, uiClipRectId);
-	pClipDataRect = m_pTimelineDataManager->GetClipDataManager(uiClipManagerId)->GetClipDataRect(uiClipRectId);
-	pClipDataRect->SetTimelineInPoint(101);
-	pClipDataRect->SetDuration(10);
-	m_pTrackDataVideoManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->GetTimelineInPoint(), pClipDataRect);
+	//m_pTimelineDataManager->GetClipDataManager(uiClipManagerUUID)->CreateClipData(pszClipInfoUUID, pszClipRectUUID);
+	//pClipDataRect = m_pTimelineDataManager->GetClipDataManager(uiClipManagerUUID)->GetClipDataRect(pszClipRectUUID);
+	//pClipDataRect->SetTimelineInPoint(600);
+	//pClipDataRect->SetDuration(100);
+	//m_pTrackDataVideoManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->GetTimelineInPoint(), pClipDataRect);
 
-	m_pTimelineDataManager->GetClipDataManager(uiClipManagerId)->CreateClipData(uiClipId, uiClipRectId);
-	pClipDataRect = m_pTimelineDataManager->GetClipDataManager(uiClipManagerId)->GetClipDataRect(uiClipRectId);
-	pClipDataRect->SetTimelineInPoint(600);
-	pClipDataRect->SetDuration(100);
-	m_pTrackDataVideoManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->GetTimelineInPoint(), pClipDataRect);
-
-	m_pTimelineDataManager->GetClipDataManager(uiClipManagerId)->CreateClipData(uiClipId, uiClipRectId);
-	pClipDataRect = m_pTimelineDataManager->GetClipDataManager(uiClipManagerId)->GetClipDataRect(uiClipRectId);
-	pClipDataRect->SetTimelineInPoint(300);
-	pClipDataRect->SetDuration(50);
-	m_pTrackDataVideoManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->GetTimelineInPoint(), pClipDataRect);
+	//m_pTimelineDataManager->GetClipDataManager(uiClipManagerUUID)->CreateClipData(pszClipInfoUUID, pszClipRectUUID);
+	//pClipDataRect = m_pTimelineDataManager->GetClipDataManager(uiClipManagerUUID)->GetClipDataRect(pszClipRectUUID);
+	//pClipDataRect->SetTimelineInPoint(300);
+	//pClipDataRect->SetDuration(50);
+	//m_pTrackDataVideoManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->GetTimelineInPoint(), pClipDataRect);
 
 
 
@@ -982,47 +1037,3 @@ void TimelineEditorView::CreateZoomMap(void)
 
 
 
-
-DROPEFFECT TimelineEditorView::OnDragEnter(COleDataObject* pDataObject, DWORD dwKeyState, CPoint point)
-{
-	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
-
-	m_pTimelineDataOperator->OnDragEnter(pDataObject, dwKeyState, point);
-	if (m_pTimelineDataOperator->EnableDrawDragRect())
-	{
-		Invalidate();
-	}
-	return OpenGLView::OnDragEnter(pDataObject, dwKeyState, point);
-}
-
-
-
-void TimelineEditorView::OnDragLeave()
-{
-	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
-
-	m_pTimelineDataOperator->OnDragLeave();
-	Invalidate();
-
-	OpenGLView::OnDragLeave();
-}
-
-
-DROPEFFECT TimelineEditorView::OnDragOver(COleDataObject* pDataObject, DWORD dwKeyState, CPoint point)
-{
-	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
-
-	Invalidate();
-	return m_pTimelineDataOperator->OnDragOver(pDataObject, dwKeyState, point);
-
-	//return OpenGLView::OnDragOver(pDataObject, dwKeyState, point);
-}
-
-
-BOOL TimelineEditorView::OnDrop(COleDataObject* pDataObject, DROPEFFECT dropEffect, CPoint point)
-{
-	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
-	OutputDebugString(_T("Drop\n"));
-
-	return OpenGLView::OnDrop(pDataObject, dropEffect, point);
-}
