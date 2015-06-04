@@ -31,6 +31,9 @@ public:
 	BOOL CreateClipData(UUID& uiClipId, UUID& uiClipRectId);
 	BOOL ChangeUUIDToCString(const UUID& uiId, PCTSTR& pszId);
 
+	// Getter
+	UUID GetClipDataManagerId(void) { return m_uiClipDataManagerId; }
+
 };
 
 

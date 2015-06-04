@@ -294,19 +294,20 @@ BOOL TimelineDataOperator::OnLButtonUp(UINT nFlags, CPoint point)
 	m_fLButtonDown = FALSE;
 	if (m_fMove)
 	{
-		m_pSelectedTrackInfo->DeleteClip(m_pOperatingClipData->m_iTimelineInPoint);
-		m_pOperatingClipData->m_iTimelineInPoint += m_iOperatingClipFrameCount;
-		(m_pEnableMovingTrack->GetTrackDataInfo())->AddClip(m_pOperatingClipData->m_iTimelineInPoint, m_pOperatingClipData);
+		int iIn = m_pOperatingClipData->GetTimelineInPoint();
+		m_pSelectedTrackInfo->DeleteClip(iIn);
+		iIn += m_iOperatingClipFrameCount;
+		m_pOperatingClipData->SetTimelineInPoint(iIn);
+		(m_pEnableMovingTrack->GetTrackDataInfo())->AddClip(iIn, m_pOperatingClipData);
 		m_pOperatingClipData->CopyRect(m_pOperatingClipData->GetOperatingRect());
-		//TODO: いずれは復活させないといけない－＞移動中はいいけど静止状態の時にトラックからIn点を持ってくるのが難しい！
-		//m_clMovingClipData->m_iTimelineInPoint = 0;
 	}
 	else if (m_fSingleInTrim)
 	{
-		m_pSelectedTrackInfo->ChangeClip(m_pOperatingClipData->m_iTimelineInPoint, m_pOperatingClipData->m_iTimelineInPoint + m_iOperatingClipFrameCount, m_pOperatingClipData);
-		m_pOperatingClipData->m_iTimelineInPoint += m_iOperatingClipFrameCount;
-		int iClipDuration = m_pOperatingClipData->GetDuration();
+		int iIn = m_pOperatingClipData->GetTimelineInPoint();
+		m_pSelectedTrackInfo->ChangeClip(iIn, iIn + m_iOperatingClipFrameCount, m_pOperatingClipData);
+		m_pOperatingClipData->SetTimelineInPoint(iIn + m_iOperatingClipFrameCount);
 		// In側に伸びる（マイナス方向への移動）は長さを加算
+		int iClipDuration = m_pOperatingClipData->GetDuration();
 		m_pOperatingClipData->SetDuration(iClipDuration - m_iOperatingClipFrameCount);
 		m_pOperatingClipData->CopyRect(m_pOperatingClipData->GetOperatingRect());
 	}
@@ -419,7 +420,7 @@ BOOL TimelineDataOperator::OnMouseMove(UINT nFlags, CPoint point)
 				m_pOperateToTrack = m_pSelectedTrack;
 			}
 			m_pOperateToTrackInfo = m_pOperateToTrack->GetTrackDataInfo();
-			m_iOperatingClipFrameCount = ChangeOperatingDistanceToTimelineFrames(szMoveSize, m_pOperatingClipData->m_iTimelineInPoint);
+			m_iOperatingClipFrameCount = ChangeOperatingDistanceToTimelineFrames(szMoveSize, m_pOperatingClipData->GetTimelineInPoint());
 			CalcClipRectDisplayPoint(m_rcMousePointRect, m_pOperatingClipData, static_cast<CRect>(m_pOperateToTrack), m_iOperatingClipFrameCount);
 			CheckMove(point);
 			CalcClipRectDisplayPoint(*(m_pOperatingClipData->GetOperatingRect()), m_pOperatingClipData, static_cast<CRect>(m_pOperateToTrack), m_iOperatingClipFrameCount);
@@ -430,14 +431,14 @@ BOOL TimelineDataOperator::OnMouseMove(UINT nFlags, CPoint point)
 			m_pOperatingClipData->SetOperatingRect(static_cast<CRect>(m_pOperatingClipData)); // 伸縮分のイメージ座標
 			if (m_fSingleInTrim)
 			{
-				m_iOperatingClipFrameCount = ChangeOperatingDistanceToTimelineFrames(szMoveSize, m_pOperatingClipData->m_iTimelineInPoint);
+				m_iOperatingClipFrameCount = ChangeOperatingDistanceToTimelineFrames(szMoveSize, m_pOperatingClipData->GetTimelineInPoint());
 				CheckInTrim();
 				CalcClipRectDisplayPoint(*(m_pOperatingClipData->GetOperatingRect()), m_pOperatingClipData, static_cast<CRect>(m_pOperateToTrack), 0, m_iOperatingClipFrameCount);
 			}
 			else
 			{
 				m_iOperatingClipFrameCount = ChangeOperatingDistanceToTimelineFrames(szMoveSize,
-					(m_pOperatingClipData->m_iTimelineInPoint + m_pOperatingClipData->GetDuration()));
+					(m_pOperatingClipData->GetTimelineInPoint() + m_pOperatingClipData->GetDuration()));
 				CheckOutTrim();
 				CalcClipRectDisplayPoint(*(m_pOperatingClipData->GetOperatingRect()), m_pOperatingClipData, static_cast<CRect>(m_pOperateToTrack), 0, 0, m_iOperatingClipFrameCount);
 			}
@@ -588,8 +589,8 @@ BOOL TimelineDataOperator::OnDragEnter(COleDataObject* pDataObject, DWORD dwKeyS
 	else
 	{
 		// TODO: ドロップ不可の場合、マウス位置を中心に展開する・・・まだ未実装
-		m_pDragAndDropClipDataRect->m_iTimelineInPoint = 0;
-		m_pDragAndDropClipDataRect->m_iTimelineOutPoint = iDuration - 1;
+		m_pDragAndDropClipDataRect->SetTimelineInPoint(0);
+		m_pDragAndDropClipDataRect->SetTimelineOutPoint(iDuration - 1);
 	}
 	return TRUE;
 }
@@ -630,8 +631,8 @@ DROPEFFECT TimelineDataOperator::OnDragOver(COleDataObject* pDataObject, DWORD d
 	else
 	{
 		// ドロップ不可の場合、0からで仮置き
-		m_pDragAndDropClipDataRect->m_iTimelineInPoint = 0;
-		m_pDragAndDropClipDataRect->m_iTimelineOutPoint = m_pDragAndDropClipDataInfo->GetDuration() - 1;
+		m_pDragAndDropClipDataRect->SetTimelineInPoint(0);
+		m_pDragAndDropClipDataRect->SetTimelineOutPoint(m_pDragAndDropClipDataInfo->GetDuration() - 1);
 		dDropEff = DROPEFFECT_NONE;
 		m_fAllowDrop = FALSE;
 	}
@@ -993,7 +994,7 @@ BOOL TimelineDataOperator::CalcClipRectDisplayPoint(CRect& rcClipRect, const Cli
 	const int& iIntrimFrames /* = 0 */, const int& iOuttrimFrames/* = 0 */)
 {
 
-	if (CalcClipRect(rcClipRect, const_cast<ClipDataRect*>(clClipData)->m_iTimelineInPoint, const_cast<ClipDataRect*>(clClipData)->GetDuration(),
+	if (CalcClipRect(rcClipRect, const_cast<ClipDataRect*>(clClipData)->GetTimelineInPoint(), const_cast<ClipDataRect*>(clClipData)->GetDuration(),
 		rcTrackRect, iMoveFrames, iIntrimFrames, iOuttrimFrames))
 	{
 		if (rcClipRect.left < m_pTimelineDataRect->left)
@@ -1147,17 +1148,17 @@ BOOL TimelineDataOperator::CheckInTrim(void)
 
 	// 重なりチェック
 	// TODO: In点の場所にクリップがあるかをサーチする。
-	m_iOperatingClipFrameCount = m_pOperateToTrackInfo->CheckClipInSingleInTrimRange(m_pOperatingClipData->m_iTimelineInPoint, m_pOperatingClipData->m_iTimelineInPoint + m_iOperatingClipFrameCount)
-		- m_pOperatingClipData->m_iTimelineInPoint;
+	m_iOperatingClipFrameCount = m_pOperateToTrackInfo->CheckClipInSingleInTrimRange(m_pOperatingClipData->GetTimelineInPoint(), m_pOperatingClipData->GetTimelineInPoint() + m_iOperatingClipFrameCount)
+		- m_pOperatingClipData->GetTimelineInPoint();
 	if (m_iOperatingClipFrameCount == 0)
 	{
 		return FALSE;
 	}
 
 	// 範囲チェック（重なりチェックより後にやらないと0を超えてドラッグされた場合に0に設定されてしまう）
-	if (m_pOperatingClipData->m_iTimelineInPoint + m_iOperatingClipFrameCount < 0)
+	if (m_pOperatingClipData->GetTimelineInPoint() + m_iOperatingClipFrameCount < 0)
 	{
-		m_iOperatingClipFrameCount = m_pOperatingClipData->m_iTimelineInPoint * -1;
+		m_iOperatingClipFrameCount = m_pOperatingClipData->GetTimelineInPoint() * -1;
 		return FALSE;
 	}
 
@@ -1177,7 +1178,7 @@ BOOL TimelineDataOperator::CheckOutTrim(void)
 	}
 
 	// 重なりチェック
-	int iStartFrame = m_pOperatingClipData->m_iTimelineInPoint + iDuration - 1;
+	int iStartFrame = m_pOperatingClipData->GetTimelineInPoint() + iDuration - 1;
 	m_iOperatingClipFrameCount = m_pOperateToTrackInfo->CheckClipInSingleOutTrimRange(iStartFrame, iStartFrame + m_iOperatingClipFrameCount) - iStartFrame;
 	if (m_iOperatingClipFrameCount == 0)
 	{
@@ -1194,29 +1195,29 @@ BOOL TimelineDataOperator::CheckMove(CPoint& point)
 	CRect rcWorkRect;
 	ClipDataRect* pClipData;
 	// 範囲チェック
-	if (m_pOperatingClipData->m_iTimelineInPoint + m_iOperatingClipFrameCount < 0)
+	if (m_pOperatingClipData->GetTimelineInPoint() + m_iOperatingClipFrameCount < 0)
 	{
-		iWorkOperatingClipFrameCount = m_pOperatingClipData->m_iTimelineInPoint * -1;
+		iWorkOperatingClipFrameCount = m_pOperatingClipData->GetTimelineInPoint() * -1;
 		// ワークに操作中の矩形領域をコピー
 		rcWorkRect.CopyRect(m_pOperatingClipData->GetOperatingRect());
 		// 仮置きした位置に合わせてワークの矩形を移動する
 		CalcClipRect(rcWorkRect, iDropInPoint, m_pOperatingClipData->GetDuration(), m_pOperateToTrack);
 		// 仮置きした場所でクリップと衝突しないかを再判定
-		iMovingClipInFrame = m_pOperatingClipData->m_iTimelineInPoint + iWorkOperatingClipFrameCount;
-		iMovingClipOutFrame = m_pOperatingClipData->m_iTimelineInPoint + m_pOperatingClipData->GetDuration() - 1 + iWorkOperatingClipFrameCount;
+		iMovingClipInFrame = m_pOperatingClipData->GetTimelineInPoint() + iWorkOperatingClipFrameCount;
+		iMovingClipOutFrame = m_pOperatingClipData->GetTimelineInPoint() + m_pOperatingClipData->GetDuration() - 1 + iWorkOperatingClipFrameCount;
 		pClipData = m_pOperateToTrackInfo->CheckMove(m_pOperatingClipData, iMovingClipInFrame, iMovingClipOutFrame);
 		if ((pClipData != nullptr) && (pClipData != m_pOperatingClipData))
 		{
 			// 重なりがあった場合
 			m_iOperatingClipFrameCount = m_iEnableMovingFrameCount;
 			m_pOperateToTrack = m_pEnableMovingTrack;
-			CalcClipRect(*(m_pOperatingClipData->GetOperatingRect()), m_pOperatingClipData->m_iTimelineInPoint, m_pOperatingClipData->GetDuration(), m_pOperateToTrack);
+			CalcClipRect(*(m_pOperatingClipData->GetOperatingRect()), m_pOperatingClipData->GetTimelineInPoint(), m_pOperatingClipData->GetDuration(), m_pOperateToTrack);
 			return FALSE;
 		}
 		else
 		{
 			// 重なりがない場合、その場所に配置する
-			m_iOperatingClipFrameCount = m_pOperatingClipData->m_iTimelineInPoint * -1;
+			m_iOperatingClipFrameCount = m_pOperatingClipData->GetTimelineInPoint() * -1;
 			m_iEnableMovingFrameCount = m_iOperatingClipFrameCount;
 			m_pEnableMovingTrack = m_pOperateToTrack;
 			CalcClipRect(*(m_pOperatingClipData->GetOperatingRect()), iDropInPoint, m_pOperatingClipData->GetDuration(), m_pOperateToTrack);
@@ -1225,37 +1226,37 @@ BOOL TimelineDataOperator::CheckMove(CPoint& point)
 	}
 
 	// 重なりチェック
-	iMovingClipInFrame = m_pOperatingClipData->m_iTimelineInPoint + m_iOperatingClipFrameCount;
-	iMovingClipOutFrame = m_pOperatingClipData->m_iTimelineInPoint + m_pOperatingClipData->GetDuration() - 1 + m_iOperatingClipFrameCount;
+	iMovingClipInFrame = m_pOperatingClipData->GetTimelineInPoint() + m_iOperatingClipFrameCount;
+	iMovingClipOutFrame = m_pOperatingClipData->GetTimelineInPoint() + m_pOperatingClipData->GetDuration() - 1 + m_iOperatingClipFrameCount;
 	pClipData = m_pOperateToTrackInfo->CheckMove(m_pOperatingClipData, iMovingClipInFrame, iMovingClipOutFrame);
 	if ((pClipData != nullptr) && (pClipData != m_pOperatingClipData))
 	{
 		// 重なりがあった場合
-		int iStaticClipCenterFrame = pClipData->m_iTimelineInPoint + static_cast<int>(floor(pClipData->GetDuration() / 2));
+		int iStaticClipCenterFrame = pClipData->GetTimelineInPoint() + static_cast<int>(floor(pClipData->GetDuration() / 2));
 		int iDropInPoint = 0;
 		// 重なっているクリップの左右に仮配置
 		if (iMovingClipInFrame <= iStaticClipCenterFrame)
 		{
 			// 中心より左の場合、重なっているクリップのIn点-自身のDurationを配置点に仮置き
-			iDropInPoint = pClipData->m_iTimelineInPoint - m_pOperatingClipData->GetDuration();
+			iDropInPoint = pClipData->GetTimelineInPoint() - m_pOperatingClipData->GetDuration();
 		}
 		else
 		{
 			// 中心より右の場合、重なっているクリップのOut点を配置点に仮置き
-			iDropInPoint = pClipData->m_iTimelineInPoint + pClipData->GetDuration();
+			iDropInPoint = pClipData->GetTimelineInPoint() + pClipData->GetDuration();
 		}
 		// 仮置きしたポイントへの移動量を算出
-		iWorkOperatingClipFrameCount = iDropInPoint - m_pOperatingClipData->m_iTimelineInPoint;
+		iWorkOperatingClipFrameCount = iDropInPoint - m_pOperatingClipData->GetTimelineInPoint();
 		// 移動の結果In点が0未満になる場合は移動しない
-		if (m_pOperatingClipData->m_iTimelineInPoint + iWorkOperatingClipFrameCount > 0)
+		if (m_pOperatingClipData->GetTimelineInPoint() + iWorkOperatingClipFrameCount > 0)
 		{
 			// ワークに操作中の矩形領域をコピー
 			rcWorkRect.CopyRect(m_pOperatingClipData->GetOperatingRect());
 			// 仮置きした位置に合わせてワークの矩形を移動する
 			CalcClipRect(rcWorkRect, iDropInPoint, m_pOperatingClipData->GetDuration(), m_pOperateToTrack);
 			// 仮置きした場所でクリップと衝突しないかを再判定
-			iMovingClipInFrame = m_pOperatingClipData->m_iTimelineInPoint + iWorkOperatingClipFrameCount;
-			iMovingClipOutFrame = m_pOperatingClipData->m_iTimelineInPoint + m_pOperatingClipData->GetDuration() - 1 + iWorkOperatingClipFrameCount;
+			iMovingClipInFrame = m_pOperatingClipData->GetTimelineInPoint() + iWorkOperatingClipFrameCount;
+			iMovingClipOutFrame = m_pOperatingClipData->GetTimelineInPoint() + m_pOperatingClipData->GetDuration() - 1 + iWorkOperatingClipFrameCount;
 			pClipData = m_pOperateToTrackInfo->CheckMove(m_pOperatingClipData, iMovingClipInFrame, iMovingClipOutFrame);
 			if ((pClipData != nullptr) && (pClipData != m_pOperatingClipData))
 			{
@@ -1264,7 +1265,7 @@ BOOL TimelineDataOperator::CheckMove(CPoint& point)
 			else
 			{
 				// 重なりがない場合、その場所に配置する
-				m_iOperatingClipFrameCount = iDropInPoint - m_pOperatingClipData->m_iTimelineInPoint;
+				m_iOperatingClipFrameCount = iDropInPoint - m_pOperatingClipData->GetTimelineInPoint();
 				m_iEnableMovingFrameCount = m_iOperatingClipFrameCount;
 				m_pEnableMovingTrack = m_pOperateToTrack;
 				CalcClipRect(*(m_pOperatingClipData->GetOperatingRect()), iDropInPoint, m_pOperatingClipData->GetDuration(), m_pOperateToTrack);
@@ -1273,7 +1274,7 @@ BOOL TimelineDataOperator::CheckMove(CPoint& point)
 		// 移動先が配置できない場合、前回移動可能だった場所に戻す。
 		m_iOperatingClipFrameCount = m_iEnableMovingFrameCount;
 		m_pOperateToTrack = m_pEnableMovingTrack;
-		CalcClipRect(*(m_pOperatingClipData->GetOperatingRect()), m_pOperatingClipData->m_iTimelineInPoint, m_pOperatingClipData->GetDuration(), m_pOperateToTrack);
+		CalcClipRect(*(m_pOperatingClipData->GetOperatingRect()), m_pOperatingClipData->GetTimelineInPoint(), m_pOperatingClipData->GetDuration(), m_pOperateToTrack);
 		return FALSE;
 	}
 

@@ -87,6 +87,9 @@
     <ClInclude Include="DragAndDropOperator.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="ClipData.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CtrlUnitPreviewAndEdit.cpp">
@@ -147,6 +150,9 @@
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="DragAndDropOperator.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="ClipData.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>

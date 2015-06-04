@@ -574,8 +574,8 @@ int TimelineEditorView::DrawClipInTrack(TrackDataRect* pTrackDataRect, const int
 			++itr;
 
 #ifdef _DEBUG
-			int iOutPoint = pClipData->m_iTimelineInPoint + pClipData->GetDuration() - 1;
-			strFrameNumber.Format(_T(" L %d T %d R %d B %d I %d O %d D %d"), pClipData->left, pClipData->top, pClipData->right, pClipData->bottom, pClipData->m_iTimelineInPoint, iOutPoint, pClipData->GetDuration());
+			int iOutPoint = pClipData->GetTimelineInPoint() + pClipData->GetDuration() - 1;
+			strFrameNumber.Format(_T(" L %d T %d R %d B %d I %d O %d D %d"), pClipData->left, pClipData->top, pClipData->right, pClipData->bottom, pClipData->GetTimelineInPoint(), iOutPoint, pClipData->GetDuration());
 			ChangeScreenPointToOpenGLPoint(5, 105 + (iClipTotalCount * 15), iHeight, dPointX, dPointY);
 			DrawTextOnGL(static_cast<PCTSTR>(pTrackDataRect->GetTrackName() + strFrameNumber), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 				static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
@@ -609,11 +609,11 @@ BOOL TimelineEditorView::DrawOperatingClip(const CDC& dcPaintDC, const int iHeig
 		int iDuration;
 		if (m_pTimelineDataOperator->IsSingleInTrim())
 		{
-			iPoint = m_pOperatingClipData->m_iTimelineInPoint + m_pTimelineDataOperator->GetOperatingClipFrameCount();
+			iPoint = m_pOperatingClipData->GetTimelineInPoint() + m_pTimelineDataOperator->GetOperatingClipFrameCount();
 		}
 		else
 		{
-			iPoint = m_pOperatingClipData->m_iTimelineInPoint;
+			iPoint = m_pOperatingClipData->GetTimelineInPoint();
 		}
 		HFONT hfDrawFont;
 		CreateDrawFont(13, 0, DEFAULT_FONTFACE, hfDrawFont);
@@ -627,12 +627,12 @@ BOOL TimelineEditorView::DrawOperatingClip(const CDC& dcPaintDC, const int iHeig
 			static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 		if (m_pTimelineDataOperator->IsSingleInTrim())
 		{
-			iPoint = m_pOperatingClipData->m_iTimelineInPoint + m_pOperatingClipData->GetDuration() - 1;
+			iPoint = m_pOperatingClipData->GetTimelineInPoint() + m_pOperatingClipData->GetDuration() - 1;
 			iDuration = m_pOperatingClipData->GetDuration() - m_pTimelineDataOperator->GetOperatingClipFrameCount();
 		}
 		else
 		{
-			iPoint = m_pOperatingClipData->m_iTimelineInPoint + m_pOperatingClipData->GetDuration() - 1 + m_pTimelineDataOperator->GetOperatingClipFrameCount();
+			iPoint = m_pOperatingClipData->GetTimelineInPoint() + m_pOperatingClipData->GetDuration() - 1 + m_pTimelineDataOperator->GetOperatingClipFrameCount();
 			iDuration = m_pOperatingClipData->GetDuration() + m_pTimelineDataOperator->GetOperatingClipFrameCount();
 		}
 		strText.Format(_T("TrimingClipOutPoint  %d"), iPoint);
@@ -662,7 +662,7 @@ BOOL TimelineEditorView::DrawOperatingClip(const CDC& dcPaintDC, const int iHeig
 		double dPointX, dPointY;
 		HFONT hfDrawFont;
 		CreateDrawFont(13, 0, DEFAULT_FONTFACE, hfDrawFont);
-		strText.Format(_T("MovingClipInPoint  %d"), m_pOperatingClipData->m_iTimelineInPoint + m_pTimelineDataOperator->GetOperatingClipFrameCount());
+		strText.Format(_T("MovingClipInPoint  %d"), m_pOperatingClipData->GetTimelineInPoint() + m_pTimelineDataOperator->GetOperatingClipFrameCount());
 		ChangeScreenPointToOpenGLPoint(700, 15, iHeight, dPointX, dPointY);
 		DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 			static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
@@ -712,7 +712,7 @@ BOOL TimelineEditorView::DrawDragAndDropClip(const CDC& dcPaintDC, const int iHe
 	double dPointX, dPointY;
 	HFONT hfDrawFont;
 	CreateDrawFont(13, 0, DEFAULT_FONTFACE, hfDrawFont);
-	strText.Format(_T("DropClipInPoint  %d"), pClipRect->m_iTimelineInPoint);
+	strText.Format(_T("DropClipInPoint  %d"), pClipRect->GetTimelineInPoint());
 	ChangeScreenPointToOpenGLPoint(700, 15, iHeight, dPointX, dPointY);
 	DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
@@ -720,7 +720,7 @@ BOOL TimelineEditorView::DrawDragAndDropClip(const CDC& dcPaintDC, const int iHe
 	ChangeScreenPointToOpenGLPoint(700, 30, iHeight, dPointX, dPointY);
 	DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
-	strText.Format(_T("DropClipOutPoint  %d"), pClipRect->m_iTimelineOutPoint);
+	strText.Format(_T("DropClipOutPoint  %d"), pClipRect->GetTimelineOutPoint());
 	ChangeScreenPointToOpenGLPoint(700, 45, iHeight, dPointX, dPointY);
 	DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
@@ -948,21 +948,21 @@ void TimelineEditorView::InitTestObject(void)
 	ClipDataRect* pClipDataRect = nullptr;
 	m_pTimelineDataManager->GetClipDataManager(uiClipManagerId)->CreateClipData(uiClipId, uiClipRectId);
 	pClipDataRect = m_pTimelineDataManager->GetClipDataManager(uiClipManagerId)->GetClipDataRect(uiClipRectId);
-	pClipDataRect->m_iTimelineInPoint = 101;
+	pClipDataRect->SetTimelineInPoint(101);
 	pClipDataRect->SetDuration(10);
-	m_pTrackDataVideoManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->m_iTimelineInPoint, pClipDataRect);
+	m_pTrackDataVideoManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->GetTimelineInPoint(), pClipDataRect);
 
 	m_pTimelineDataManager->GetClipDataManager(uiClipManagerId)->CreateClipData(uiClipId, uiClipRectId);
 	pClipDataRect = m_pTimelineDataManager->GetClipDataManager(uiClipManagerId)->GetClipDataRect(uiClipRectId);
-	pClipDataRect->m_iTimelineInPoint = 600;
+	pClipDataRect->SetTimelineInPoint(600);
 	pClipDataRect->SetDuration(100);
-	m_pTrackDataVideoManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->m_iTimelineInPoint, pClipDataRect);
+	m_pTrackDataVideoManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->GetTimelineInPoint(), pClipDataRect);
 
 	m_pTimelineDataManager->GetClipDataManager(uiClipManagerId)->CreateClipData(uiClipId, uiClipRectId);
 	pClipDataRect = m_pTimelineDataManager->GetClipDataManager(uiClipManagerId)->GetClipDataRect(uiClipRectId);
-	pClipDataRect->m_iTimelineInPoint = 300;
+	pClipDataRect->SetTimelineInPoint(300);
 	pClipDataRect->SetDuration(50);
-	m_pTrackDataVideoManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->m_iTimelineInPoint, pClipDataRect);
+	m_pTrackDataVideoManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->GetTimelineInPoint(), pClipDataRect);
 
 
 

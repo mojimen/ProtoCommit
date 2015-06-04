@@ -23,6 +23,8 @@ private:
 	//std::list<UUID> m_uiVALinkList;
 	BOOL m_fLocked;
 	//std::map < int, FilterInfo > m_FilterMap;	//InPoint, FilterInfo 
+	int m_iTimelineInPoint;
+	int m_iTimelineOutPoint;
 
 	// ForView
 	OpenGLRect m_rcOperatingRect;
@@ -37,15 +39,12 @@ private:
 
 public:
 	// TODO: private化
-	int m_iTimelineInPoint;
-	int m_iTimelineOutPoint;
 
 private:
 	// クリップ情報データとのリンク項目
 	UUID m_uiClipId;
 	ClipDataInfo* m_pClipDataInfo;
 
-	// For ProtoType
 
 
 
@@ -65,6 +64,8 @@ public:
 	void SetClipRectId(UUID uiClipId) { m_uiClipRectId = uiClipId; }
 	void SetClipKind(InfoKind eClipKind) { m_eClipKind = eClipKind; }
 	void SetDuration(int iDuration) { m_iDuration = iDuration; }
+	void SetTimelineInPoint(int iTimelineInPoint) { m_iTimelineInPoint = iTimelineInPoint; }
+	void SetTimelineOutPoint(int iTimelineOutPoint) { m_iTimelineOutPoint = iTimelineOutPoint; }
 	void SetOperatingRect(const CRect& rcRect) { m_rcOperatingRect.CopyRect(rcRect); }
 	void CopyOperatingRectToOriginalRect(void) { CopyRect(m_rcOperatingRect); m_rcOperatingRect.SetRectEmpty(); }
 	void SetOverlappingVert(const float fLeft, const float fTop, const float fRight, const float fBottom);
@@ -102,6 +103,8 @@ public:
 	int GetDuration(void) { return m_iDuration; }
 	UUID GetClipDataInfoId(void){ return m_uiClipId; }
 	ClipDataInfo* GetClipDataInfo(void){ return m_pClipDataInfo; }
+	int GetTimelineInPoint(void) { return m_iTimelineInPoint; }
+	int GetTimelineOutPoint(void) { return m_iTimelineOutPoint; }
 
 	CRect* GetOperatingRect(void) { return &m_rcOperatingRect; }
 	float(*GetOverlappingVert(void))[3] { return m_fOverlappingVert; }

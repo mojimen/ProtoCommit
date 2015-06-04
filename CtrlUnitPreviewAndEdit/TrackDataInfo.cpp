@@ -198,7 +198,7 @@ int TrackDataInfo::CheckClipInSingleOutTrimRange(int iStartFrame, int iEndFrame)
 	{
 		if ((*itr).first <= iEndFrame)
 		{
-			return ((*itr).second)->m_iTimelineInPoint - 1;
+			return ((*itr).second)->GetTimelineInPoint() - 1;
 		}
 	}
 	return iEndFrame;
@@ -216,7 +216,7 @@ int TrackDataInfo::CheckClipInSingleInTrimRange(int iStartFrame, int iEndFrame)
 	{
 		--itr;
 		ClipDataRect* pClipData = (*itr).second;
-		int iOutFrame = pClipData->m_iTimelineInPoint + pClipData->GetDuration() - 1;
+		int iOutFrame = pClipData->GetTimelineInPoint() + pClipData->GetDuration() - 1;
 		if (iEndFrame <= iOutFrame)
 		{
 			return iOutFrame + 1;
