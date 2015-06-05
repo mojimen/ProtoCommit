@@ -8,6 +8,7 @@ class TrackDataRect;
 class ClipDataManager;
 class ClipDataRect;
 class DragAndDropOperator;
+class TransitionManager;
 
 // TimelineDataOperator コマンド ターゲット
 
@@ -48,7 +49,7 @@ private:
 	OpenGLRect* m_pTimelineDataRect;
 	OpenGLRect* m_pTimelineCursorHitArea;
 	//TODO: これはいらないかも？
-	OpenGLRect* m_pTransisionRect;
+	OpenGLRect* m_pTransitionRect;
 
 	CRect m_rcMousePointRect;			// 移動中のイメージ（重なり中のイメージ）
 	CPoint m_poMousePointerLocation;	// マウスボタンが押されたときの位置
@@ -75,6 +76,8 @@ private:
 	UUID m_uiTrackDataMasterManagerId;
 	ClipDataManager* m_pClipDataManager;
 	UUID m_uiClipDataManagerUUID;
+	TransitionManager* m_pTransitionManager;
+	CString m_strTransitionManagerUUID;
 
 	// オペレータ
 	DragAndDropOperator* m_pDropAndDragOperator;
@@ -112,17 +115,22 @@ public:
 	void OnDragLeave(void);
 	DROPEFFECT OnDragOver(COleDataObject* pDataObject, DWORD dwKeyState, const CPoint& point);
 	//BOOL OnDrop(COleDataObject* pDataObject, DROPEFFECT dropEffect, CPoint point);
+	BOOL OnContextMenu(const CPoint& poClientPoint, CMenu& mContextMenu);
+	BOOL TimelineDataOperator::OnTransitionSetIn(PCTSTR pszMessage);
 
 	BOOL ChangeDisplayScale(void);
 	void CalcTimelineDisplayRange(void);
 
 	// ヒットテスト
 	TrackDataRect* IsPointInAnyTrack(const CPoint& point);
-	BOOL IsPointInAnyClipRect(const CPoint& point);
+	BOOL IsPointInAnyClipRect(const CPoint& point, TrackDataInfo& cTrackInfo);
+	BOOL IsPointInClip(const CPoint& poPoint);
 	BOOL IsPointInClipRect(const CPoint& point, const CRect& rcClipRect);
 	BOOL IsPointInTrimRange(const CPoint& point, const CRect& rcClipRect);
 	BOOL IsPointInSeekBar(const CPoint& point);
 	BOOL IsPointInTimelineControlPanel(const CPoint& point);
+	ClipDataRect* IsClipAtIn(TrackDataInfo& cTrackInfo, const int& iIn);
+	ClipDataRect* IsClipAtOut(TrackDataInfo& cTrackInfo, const int& iOut);
 
 	// 操作チェック
 	BOOL CheckInTrim(void);
@@ -148,7 +156,7 @@ public:
 	OpenGLRect* GetTimelineDataRect(void){ return m_pTimelineDataRect; }
 	OpenGLRect* GetTimelineCursorHitArea(void){ return m_pTimelineCursorHitArea; }
 	//TODO: これはいらないかも？
-	OpenGLRect* GetTransisionRect(void){ return m_pTransisionRect; }
+	OpenGLRect* GetTransitionRect(void){ return m_pTransitionRect; }
 
 	TimelineDataManager* GetTimelineDataManager(void){ return m_pTimelineDataManager; }
 	UUID GetTimelineDataManagerId(void){ return m_uiTimelineDataManagerId; }
@@ -190,6 +198,15 @@ public:
 	TrackDataInfo* GetSelectedTrackInfo(void){ return m_pSelectedTrackInfo; }
 	TrackDataRect* GetOperateToTrack(void){ return m_pOperateToTrack; }
 	TrackDataInfo* GetOperateToTrackInfo(void){ return m_pOperateToTrackInfo; }
+
+	void SetRectAroundPoint(ClipDataRect& pClipRect, const POINT point, const int& iInputHeight);
+
+	BOOL DeleteClip(void);
+
+	ClipDataRect* IsTransitionSetInSide(TrackDataInfo& cTrackInfo, ClipDataRect& cClipRect);
+	ClipDataRect* IsTransitionSetOutSide(ClipDataRect& cClipRect);
+	CMenu* FindSubMenuFromString(CMenu* pMenu, LPCTSTR pszSearchString, int& nPos);
+
 };
 
 

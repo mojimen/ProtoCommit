@@ -3,6 +3,7 @@
 #include <map>
 #include "OpenGLView.h"
 #include "ConstantDefine.h"
+#include "TimelineDataManager.h"
 
 class OpenGLRect;
 class TimelineDataOperator;
@@ -80,9 +81,11 @@ private:
 	OpenGLRect* m_pTrackHeaderRect;
 	OpenGLRect* m_pTimelineDataRect;
 	OpenGLRect* m_pTimelineCursorHitArea;
-	OpenGLRect* m_pTransisionRect;
+	OpenGLRect* m_pTransitionRect;
 
 	int m_iTimelineCursorPoint;			// タイムラインカーソルの描画位置
+
+	ClipDataPositionMap m_mpClipMap;
 
 	// 操作中クリップへのポインタ
 	ClipDataRect* m_pOperatingClipData;
@@ -104,18 +107,18 @@ private:
 	// 描画
 	void DrawTimelineEditorView(CPaintDC& dcPaintDc);
 	void DrawTimelineControlPanel(void);
-	void DrawSeekBar(const CDC& dcPaintDC, const int iHeight);
-	void DrawBigScale(const CDC& dcPaintDC, const int iDrawFrame, const int iHeight, POINT& pScaleLine);
-	void DrawMiddleScale(const CDC& dcPaintDC, const int iDrawFrame, const int iHeight, POINT& pScaleLine);
-	void DrawSmallScale(const CDC& dcPaintDC, const int iDrawFrame, const int iHeight, POINT& pScaleLine);
+	void DrawSeekBar(const CDC& dcPaintDC, const int& iHeight);
+	void DrawBigScale(const CDC& dcPaintDC, const int& iDrawFrame, const int& iHeight, POINT& pScaleLine);
+	void DrawMiddleScale(const CDC& dcPaintDC, const int& iDrawFrame, const int& iHeight, POINT& pScaleLine);
+	void DrawSmallScale(const CDC& dcPaintDC, const int& iDrawFrame, const int& iHeight, POINT& pScaleLine);
 	void DrawTrackHeader(void);
-	void DrawTrack(const int iHeight, const CPaintDC& dcPaintDC);
-	BOOL DrawClip(const int iHeight, CPaintDC& dcPaintDC);
-	int DrawClipInTrack(TrackDataRect* pTrackDataRect, const int iHeight, CPaintDC& dcPaintDC, int iClipTotalCount = 0);
+	void DrawTrack(const CPaintDC& dcPaintDC, const int& iHeight);
+	BOOL DrawClip(const CPaintDC& dcPaintDC, const int& iHeight);
+	int DrawClipInTrack(const CPaintDC& dcPaintDC, TrackDataRect* pTrackDataRect, const int& iHeight, int iClipTotalCount = 0);
 	void DrawTimelineDataRect(void);
-	BOOL DrawOperatingClip(const CDC& dcPaintDC, const int iHeight);
-	BOOL DrawDragAndDropClip(const CDC& dcPaintDC, const int iHeight);
-	BOOL DrawTimelineCursor(const CDC& dcPaintDC, const int iHeight);
+	BOOL DrawOperatingClip(const CDC& dcPaintDC, const int& iHeight);
+	BOOL DrawDragAndDropClip(const CDC& dcPaintDC, const int& iHeight);
+	BOOL DrawTimelineCursor(const CDC& dcPaintDC, const int& iHeight);
 	//void DrawShuttleGuideLine(CDC& dcMemDc, CDC& dcMovingMemDc, BLENDFUNCTION& blAlphaBlend, CRect& rcShuttleLineRect, float fGuideAreaWidth);
 	//void DrawAnimation(const int iFrame);
 
@@ -134,4 +137,7 @@ public:
 	virtual void OnDragLeave();
 	virtual DROPEFFECT OnDragOver(COleDataObject* pDataObject, DWORD dwKeyState, CPoint point);
 	//virtual BOOL OnDrop(COleDataObject* pDataObject, DROPEFFECT dropEffect, CPoint point);
+	afx_msg void OnContextMenu(CWnd* /*pWnd*/, CPoint /*point*/);
+	afx_msg void OnClipDelete();
+	afx_msg void OnTransitionSetIn();
 };

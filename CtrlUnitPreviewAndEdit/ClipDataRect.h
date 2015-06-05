@@ -43,6 +43,15 @@ public:
 	void DrawOverlappingRect(int iHeight);
 	void InitializeOperatingRect(void) { m_rcOperatingRect.SetRectEmpty(); }
 
+	// ClipDataInfo Function
+	void AddInPoint(int iNum) { m_pClipDataInfo->AddInPoint(iNum); }
+	void AddOutPoint(int iNum) { m_pClipDataInfo->AddOutPoint(iNum); }
+	void AddDuration(int iNum) { m_pClipDataInfo->AddDuration(iNum); }
+	void AddTimelineInPoint(int iNum) { m_pClipDataInfo->AddTimelineInPoint(iNum); }
+	void AddTimelineOutPoint(int iNum) { m_pClipDataInfo->AddTimelineOutPoint(iNum); }
+	void ResetTransition(BOOL fIn, int iLength) { m_pClipDataInfo->ResetTransition(fIn, iLength); }
+
+
 	// Setter
 	void SetOperatingRect(const CRect& rcRect) { m_rcOperatingRect.CopyRect(rcRect); }
 	void CopyOperatingRectToOriginalRect(void) { CopyRect(m_rcOperatingRect); m_rcOperatingRect.SetRectEmpty(); }
@@ -76,14 +85,26 @@ public:
 	// ClipDataInfo Setter
 	void SetFileId(UUID uiFileId) { m_pClipDataInfo->SetFileId(uiFileId); }
 	void SetInPoint(int iInPoint) { m_pClipDataInfo->SetInPoint(iInPoint); }
+	void SetInPoint(void) { m_pClipDataInfo->SetInPoint(); }
 	void SetOutPoint(int iOutPoint) { m_pClipDataInfo->SetOutPoint(iOutPoint); }
+	void SetOutPoint(void) { m_pClipDataInfo->SetOutPoint(); }
 	void SetDuration(int iDuration) { m_pClipDataInfo->SetDuration(iDuration); }
+	void SetDuration(void) { m_pClipDataInfo->SetDuration(); }
 	void SetInOffset(int iInOffset) { m_pClipDataInfo->SetInOffset(iInOffset); }
+	void SetInTransition(BOOL fTransition) { m_pClipDataInfo->SetInTransition(fTransition); }
+	void SetInTransitionUUID(PCTSTR pszUUID) { m_pClipDataInfo->SetInTransitionUUID(pszUUID); }
+	void SetInTransitionClipInfo(ClipDataInfo* pClipInfo) { m_pClipDataInfo->SetInTransitionClipInfo(pClipInfo); }
+	void SetOutTransition(BOOL fTransition) { m_pClipDataInfo->SetOutTransition(fTransition); }
+	void SetOutTransitionUUID(PCTSTR pszUUID) { m_pClipDataInfo->SetOutTransitionUUID(pszUUID); }
+	void SetOutTransitionClipInfo(ClipDataInfo* pClipInfo) { m_pClipDataInfo->SetOutTransitionClipInfo(pClipInfo); }
 	void SetTimelineInPoint(int iTimelineInPoint) { m_pClipDataInfo->SetTimelineInPoint(iTimelineInPoint); }
+	void SetTimelineInPoint(void) { m_pClipDataInfo->SetTimelineInPoint(); }
 	void SetTimelineOutPoint(int iTimelineOutPoint) { m_pClipDataInfo->SetTimelineOutPoint(iTimelineOutPoint); }
+	void SetTimelineOutPoint(void) { m_pClipDataInfo->SetTimelineOutPoint(); }
 #ifdef PROTOTYPEMODE
 	void SetFilePath(PCTSTR pszFilePath) { m_pClipDataInfo->SetFilePath(pszFilePath); }
 #endif
+	void SetFileDuration(int iFileDuration) { m_pClipDataInfo->SetFileDuration(iFileDuration); }
 
 
 	// Getter
@@ -112,10 +133,17 @@ public:
 	int GetOutPoint(void) { return m_pClipDataInfo->GetOutPoint(); }
 	int GetDuration(void) { return m_pClipDataInfo->GetDuration(); }
 	int GetInOffset(void) { return m_pClipDataInfo->GetInOffset(); }
+	BOOL GetInTransition(void) { return m_pClipDataInfo->GetInTransition(); }
+	PCTSTR GetInTransitionUUID(void) { return m_pClipDataInfo->GetInTransitionUUID(); }
+	ClipDataInfo* GetInTransitionClipInfo(void) { return m_pClipDataInfo->GetInTransitionClipInfo(); }
+	BOOL GetOutTransition(void) { return m_pClipDataInfo->GetOutTransition(); }
+	PCTSTR GetOutTransitionUUID(void) { return m_pClipDataInfo->GetOutTransitionUUID(); }
+	ClipDataInfo* GetOutTransitionClipInfo(void) { return m_pClipDataInfo->GetOutTransitionClipInfo(); }
 	int GetTimelineInPoint(void) { return m_pClipDataInfo->GetTimelineInPoint(); }
 	int GetTimelineOutPoint(void) { return m_pClipDataInfo->GetTimelineOutPoint(); }
 #ifdef PROTOTYPEMODE
-	CString GetFilePath(void) { return m_pClipDataInfo->GetFilePath(); }
+	PCTSTR GetFilePath(void) { return m_pClipDataInfo->GetFilePath(); }
 #endif
+	int GetFileDuration(void) { return m_pClipDataInfo->GetFileDuration(); }
 
 };

@@ -208,6 +208,8 @@
     <ClInclude Include="TrackDataInfo.h" />
     <ClInclude Include="TrackDataManager.h" />
     <ClInclude Include="TrackDataRect.h" />
+    <ClInclude Include="TransitionData.h" />
+    <ClInclude Include="TransitionManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChildFrm.cpp" />
@@ -236,6 +238,8 @@
     <ClCompile Include="TrackDataInfo.cpp" />
     <ClCompile Include="TrackDataManager.cpp" />
     <ClCompile Include="TrackDataRect.cpp" />
+    <ClCompile Include="TransitionData.cpp" />
+    <ClCompile Include="TransitionManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CtrlUnitPreviewAndEdit.rc" />

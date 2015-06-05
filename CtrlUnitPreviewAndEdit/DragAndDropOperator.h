@@ -26,7 +26,7 @@ public:
 	OpenGLRect* m_pTimelineDataRect;
 	OpenGLRect* m_pTimelineCursorHitArea;
 	//TODO: これはいらないかも？
-	OpenGLRect* m_pTransisionRect;
+	OpenGLRect* m_pTransitionRect;
 
 	// タイムラインデータ管理
 	TimelineDataOperator* m_pTimelineDataOperator;
@@ -48,9 +48,9 @@ public:
 	TrackDataRect* GetDropTrack(const POINT& point);
 	BOOL Initialize(UUID& uiDragAndDropOperatorId);
 	BOOL CheckFileNameExtension(const CString& strFileName);
-	BOOL CheckDropFile(PCTSTR pszFileName, CString& strClipFileName, UINT& uIn, UINT& uOut);
-	int CreateClipData(ClipDataRect& pClipDataRect, PCTSTR pszClipFileName, const UINT& uIn, const UINT& uOut);
-	BOOL CreateClipDataFromDropFile(TrackDataInfo& pTrackDataInfo, const UINT& uFrame, PCTSTR pszClipFileName, const UINT& uIn, const UINT& uOut);
+	BOOL CheckDropFile(PCTSTR pszFileName, CString& strClipFileName, UINT& uIn, UINT& uOut, int& iFileDuration);
+	int CreateClipData(ClipDataRect& pClipDataRect, PCTSTR pszClipFileName, const UINT& uIn, const UINT& uOut, const int& iFileDuration);
+	BOOL CreateClipDataFromDropFile(TrackDataInfo& pTrackDataInfo, const UINT& uFrame, PCTSTR pszClipFileName, const UINT& uIn, const UINT& uOut, const int& iFileDuration);
 	BOOL SetClipDataInOutPoint(ClipDataRect& pClipDataRect, const UINT& uFrame, const UINT& uDuration);
 
 private:

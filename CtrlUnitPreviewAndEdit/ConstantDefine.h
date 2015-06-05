@@ -61,9 +61,9 @@
 
 
 // 動作モード
-//#define PROTOTYPEMODE
-//#define SEEKBAR_MIDDLESCALELINE_DRAW
-//#define SEEKBAR_SMALLSCALELINE_DRAW
+#define PROTOTYPEMODE
+#define SEEKBAR_MIDDLESCALELINE_DRAW
+#define SEEKBAR_SMALLSCALELINE_DRAW
 
 // 文字種別／サイズ
 #define FONTFACE_MSMINCHOU _T("ＭＳ 明朝")
@@ -102,3 +102,14 @@
 #define TRACK_HIEGHT_MAX 300
 
 #define SINGLETRIMINGBORDER_WIDTH 10
+
+
+
+// トランジション
+#define TRANSITION_DEFAULT_LENGTH 120
+
+
+
+
+// エラーメッセージ
+#define TRANSITION_GAP_NOT_EXIST _T("余分な映像が存在しないためトランジションの設定ができません")

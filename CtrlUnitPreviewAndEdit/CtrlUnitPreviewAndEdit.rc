@@ -129,6 +129,35 @@ BEGIN
     END
 END
 
+IDR_CONTEXT_CLIP MENU
+BEGIN
+    POPUP "クリップ編集"
+    BEGIN
+        POPUP "トランジション設定(&S)"
+        BEGIN
+            MENUITEM "In側設定(&I)",                   ID_TRANSITION_SET_IN
+            MENUITEM "Out側設定(&O)",                  ID_TRANSITION_SET_OUT
+        END
+        POPUP "トランジション解除(&R)"
+        BEGIN
+            POPUP "In側解除(&I)"
+            BEGIN
+                MENUITEM "開始点で分割(&S)",                  ID_TRANSITION_RESET_IN_START
+                MENUITEM "中央で分割(&C)",                   ID_TRANSITION_RESET_IN_CENTER
+                MENUITEM "終了点で分割(&E)",                  ID_TRANSITION_RESET_IN_END
+            END
+            POPUP "Out側解除(&O)"
+            BEGIN
+                MENUITEM "開始点で分割(&S)",                  ID_TRANSITION_RESET_OUT_START
+                MENUITEM "中央で分割(&C)",                   ID_TRANSITION_RESET_OUT_CENTER
+                MENUITEM "終了点で分割(&E)",                  ID_TRANSITION_RESET_OUT_END
+            END
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "削除(&D)",                      ID_CLIP_DELETE
+    END
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //

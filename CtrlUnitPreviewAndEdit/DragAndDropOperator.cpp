@@ -31,7 +31,7 @@ BOOL DragAndDropOperator::Initialize(UUID& uiDragAndDropOperatorId)
 	m_pTrackHeaderRect = m_pTimelineDataOperator->GetTrackHeaderRect();
 	m_pTimelineDataRect = m_pTimelineDataOperator->GetTimelineDataRect();
 	m_pTimelineCursorHitArea = m_pTimelineDataOperator->GetTimelineCursorHitArea();
-	m_pTransisionRect = m_pTimelineDataOperator->GetTransisionRect();
+	m_pTransitionRect = m_pTimelineDataOperator->GetTransitionRect();
 
 	m_pTimelineDataManager = m_pTimelineDataOperator->GetTimelineDataManager();
 	m_pTrackDataVideoManager = m_pTimelineDataManager->GetTrackDataManager(TRACKDATAMANAGER_VIDEO, m_uiTrackDataVideoManagerId);
@@ -76,7 +76,7 @@ BOOL DragAndDropOperator::CheckFileNameExtension(const CString& strFileName)
 }
 
 // ドロップされたファイルの形式をチェックする
-BOOL DragAndDropOperator::CheckDropFile(PCTSTR pszFileName, CString& strClipFileName, UINT& uIn, UINT& uOut)
+BOOL DragAndDropOperator::CheckDropFile(PCTSTR pszFileName, CString& strClipFileName, UINT& uIn, UINT& uOut, int& iFileDuration)
 {
 	ASSERT(uIn >= 0);
 	ASSERT(uOut >= 0);
@@ -85,10 +85,11 @@ BOOL DragAndDropOperator::CheckDropFile(PCTSTR pszFileName, CString& strClipFile
 	{
 		return FALSE;
 	}
-	CString strIn, strOut;
+	CString strIn, strOut, strFileDuration;
 	sfOpenFile.ReadString(strClipFileName);
 	sfOpenFile.ReadString(strIn);
 	sfOpenFile.ReadString(strOut);
+	sfOpenFile.ReadString(strFileDuration);
 	sfOpenFile.Close();
 
 	if ((strClipFileName.IsEmpty()) || (strIn.IsEmpty()) || (strOut.IsEmpty()))
@@ -105,40 +106,43 @@ BOOL DragAndDropOperator::CheckDropFile(PCTSTR pszFileName, CString& strClipFile
 	{
 		return FALSE;
 	}
+	strCheck = strFileDuration.SpanIncluding(_T("0123456789"));
+	if (strCheck.Compare(strFileDuration) != 0)
+	{
+		return FALSE;
+	}
 	uIn = _ttoi(strIn);
 	uOut = _ttoi(strOut);
+	iFileDuration = _ttoi(strFileDuration);
 	return TRUE;
 }
 
 // クリップデータの基本情報を作成する
-int DragAndDropOperator::CreateClipData(ClipDataRect& pClipDataRect, PCTSTR pszClipFileName, const UINT& uIn, const UINT& uOut)
+int DragAndDropOperator::CreateClipData(ClipDataRect& pClipDataRect, PCTSTR pszClipFileName, const UINT& uIn, const UINT& uOut, const int& iFileDuration)
 {
 	int iDuration = uOut - uIn;
 	if (iDuration < 0)
 	{
-		iDuration = iDuration * -1 + 1;
-	}
-	else
-	{
-		++iDuration;
+		iDuration = iDuration * -1;
 	}
 	pClipDataRect.SetDuration(iDuration);
 	pClipDataRect.SetInPoint(uIn);
-	pClipDataRect.SetOutPoint(uOut);
-	pClipDataRect.SetDuration(iDuration);
+	pClipDataRect.SetOutPoint();
 #ifdef PROTOTYPEMODE
 	pClipDataRect.SetFilePath(pszClipFileName);
 #endif
+	pClipDataRect.SetFileDuration(iFileDuration);
 	return iDuration;
 }
 
 // ドロップされたファイルからクリップデータを作成する
-BOOL DragAndDropOperator::CreateClipDataFromDropFile(TrackDataInfo& pTrackDataInfo, const UINT& uFrame, PCTSTR pszClipFileName, const UINT& uIn, const UINT& uOut)
+BOOL DragAndDropOperator::CreateClipDataFromDropFile(TrackDataInfo& pTrackDataInfo, const UINT& uFrame, PCTSTR pszClipFileName, 
+	const UINT& uIn, const UINT& uOut, const int& iFileDuration)
 {
 	PCTSTR pszClipInfoUUID = nullptr, pszClipRectUUID = nullptr;
 	m_pClipDataManager->CreateClipData(pszClipInfoUUID, pszClipRectUUID);
 	ClipDataRect* pClipDataRect = m_pClipDataManager->GetClipDataRect(pszClipRectUUID);
-	int iDuration =  CreateClipData(*pClipDataRect, pszClipFileName, uIn, uOut);
+	int iDuration =  CreateClipData(*pClipDataRect, pszClipFileName, uIn, uOut, iFileDuration);
 
 	SetClipDataInOutPoint(*pClipDataRect, uFrame, static_cast<UINT>(iDuration));
 
@@ -151,16 +155,14 @@ BOOL DragAndDropOperator::SetClipDataInOutPoint(ClipDataRect& pClipDataRect, con
 {
 	ASSERT(uDuration > 0);
 	int iIn = uFrame - static_cast<UINT>(floor(uDuration / 2));
-	int iOut = uFrame + static_cast<UINT>(ceil(uDuration / 2)) - 1;
 	if (iIn < 0)
 	{
 		pClipDataRect.SetTimelineInPoint(0);
-		pClipDataRect.SetTimelineOutPoint(uDuration - 1);
+		pClipDataRect.SetTimelineOutPoint();
 		return FALSE;
 	}
-	pClipDataRect.SetDuration(uDuration);
 	pClipDataRect.SetTimelineInPoint(iIn);
-	pClipDataRect.SetTimelineOutPoint(iOut);
+	pClipDataRect.SetTimelineOutPoint();
 	return TRUE;
 }
 

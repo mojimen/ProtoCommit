@@ -81,6 +81,7 @@ BOOL TrackDataManager::DeleteTrackData(const UINT iLayerNumber)
 		return FALSE;
 	}
 	TrackDataInfoMap::iterator itrInfo = m_TrackDataInfoMap.find(static_cast<CString>(pszTrackId));
+	RpcStringFree(&m_rwsId);
 	if (itrInfo == m_TrackDataInfoMap.end())
 	{
 		return FALSE;
@@ -92,6 +93,7 @@ BOOL TrackDataManager::DeleteTrackData(const UINT iLayerNumber)
 		return FALSE;
 	}
 	TrackDataRectMap::iterator itrRect = m_TrackDataRectMap.find(static_cast<CString>(pszRectId));
+	RpcStringFree(&m_rwsId);
 	if (itrRect == m_TrackDataRectMap.end())
 	{
 		return FALSE;
@@ -132,6 +134,7 @@ BOOL TrackDataManager::SetTrackData(const UINT iLayerNumber, const UUID& uiTrack
 			m_TrackDataRectMap.insert(std::make_pair(static_cast<CString>(pszTrackRectId), pTrackDataRect));
 			return TRUE;
 		}
+		RpcStringFree(&m_rwsId);
 	}
 	return FALSE;
 }
@@ -176,6 +179,7 @@ TrackDataInfo* TrackDataManager::GetTrackDataInfo(const UUID& uiTrackDataId)
 	if (ChangeUUIDToCString(uiTrackDataId, pszTrackInfoId))
 	{
 		TrackDataInfoMap::iterator itr = m_TrackDataInfoMap.find(pszTrackInfoId);
+		RpcStringFree(&m_rwsId);
 		if (itr != m_TrackDataInfoMap.end())
 		{
 			return (*itr).second;
@@ -192,6 +196,7 @@ TrackDataRect* TrackDataManager::GetTrackDataRect(const UUID& uiTrackDataRectId)
 	if (ChangeUUIDToCString(uiTrackDataRectId, pszTrackRectId))
 	{
 		TrackDataRectMap::iterator itr = m_TrackDataRectMap.find(pszTrackRectId);
+		RpcStringFree(&m_rwsId);
 		if (itr != m_TrackDataRectMap.end())
 		{
 			return (*itr).second;
@@ -215,6 +220,7 @@ TrackDataInfo* TrackDataManager::GetTrackDataInfo(const UINT iLayerNumber)
 	if (ChangeUUIDToCString(uiTrackDataId, pszTrackInfoId))
 	{
 		TrackDataInfoMap::iterator itr = m_TrackDataInfoMap.find(pszTrackInfoId);
+		RpcStringFree(&m_rwsId);
 		if (itr != m_TrackDataInfoMap.end())
 		{
 			return (*itr).second;
@@ -249,6 +255,7 @@ TrackDataRect* TrackDataManager::GetTrackDataRect(const UINT iLayerNumber)
 	if (ChangeUUIDToCString(uiTrackDataId, pszTrackInfoId))
 	{
 		TrackDataRectMap::iterator itr = m_TrackDataRectMap.find(pszTrackInfoId);
+		RpcStringFree(&m_rwsId);
 		if (itr != m_TrackDataRectMap.end())
 		{
 			return (*itr).second;

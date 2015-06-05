@@ -37,6 +37,9 @@ BEGIN_MESSAGE_MAP(TimelineEditorView, OpenGLView)
 	ON_WM_RBUTTONUP()
 	ON_WM_DROPFILES()
 	ON_WM_CREATE()
+	ON_WM_CONTEXTMENU()
+	ON_COMMAND(ID_CLIP_DELETE, &TimelineEditorView::OnClipDelete)
+	ON_COMMAND(ID_TRANSITION_SET_IN, &TimelineEditorView::OnTransitionSetIn)
 END_MESSAGE_MAP()
 
 // TimelineEditorView 描画
@@ -118,6 +121,8 @@ void TimelineEditorView::OnPaint()
 	SwapBuffers(m_pDC->GetSafeHdc());
 
 	wglMakeCurrent(NULL, NULL);
+
+	DeleteDC(dc);
 }
 
 // Ｌボタンダウン
@@ -134,8 +139,6 @@ void TimelineEditorView::OnLButtonDown(UINT nFlags, CPoint point)
 	{
 		SetCapture();
 	}
-
-	OpenGLView::OnLButtonDown(nFlags, point);
 }
 
 // Ｌボタンアップ
@@ -150,8 +153,6 @@ void TimelineEditorView::OnLButtonUp(UINT nFlags, CPoint point)
 		Invalidate();
 	}
 	ReleaseCapture();
-
-	OpenGLView::OnLButtonUp(nFlags, point);
 }
 
 // Ｒボタンアップ
@@ -161,12 +162,11 @@ void TimelineEditorView::OnRButtonUp(UINT nFlags, CPoint point)
 	{
 		Invalidate();
 	}
-	//else
-	//{
-	//	ClientToScreen(&point);
-	//	//OnContextMenu(this, point);
-	//}
-	OpenGLView::OnRButtonUp(nFlags, point);
+	else
+	{
+		ClientToScreen(&point);
+		OnContextMenu(this, point);
+	}
 }
 
 // マウス移動
@@ -179,8 +179,6 @@ void TimelineEditorView::OnMouseMove(UINT nFlags, CPoint point)
 		Invalidate();
 	}
 	m_pOperatingClipData = m_pTimelineDataOperator->GetOperatingClipData();
-
-	OpenGLView::OnMouseMove(nFlags, point);
 }
 
 // サイズ変更
@@ -252,8 +250,6 @@ void TimelineEditorView::OnDropFiles(HDROP hDropInfo)
 	{
 		OutputDebugString(_T("DROP FALSE\n"));
 	}
-
-	OpenGLView::OnDropFiles(hDropInfo);
 }
 
 // ドラッグ開始
@@ -268,7 +264,6 @@ DROPEFFECT TimelineEditorView::OnDragEnter(COleDataObject* pDataObject, DWORD dw
 		Invalidate();
 	}
 	return DROPEFFECT_NONE;
-	//return OpenGLView::OnDragEnter(pDataObject, dwKeyState, point);
 }
 
 // ドラッグ終了
@@ -278,8 +273,6 @@ void TimelineEditorView::OnDragLeave()
 
 	m_pTimelineDataOperator->OnDragLeave();
 	Invalidate();
-
-	OpenGLView::OnDragLeave();
 }
 
 // ドラッグ移動
@@ -289,8 +282,6 @@ DROPEFFECT TimelineEditorView::OnDragOver(COleDataObject* pDataObject, DWORD dwK
 
 	Invalidate();
 	return m_pTimelineDataOperator->OnDragOver(pDataObject, dwKeyState, point);
-
-	//return OpenGLView::OnDragOver(pDataObject, dwKeyState, point);
 }
 
 // ドロップ
@@ -326,7 +317,7 @@ void TimelineEditorView::DrawTimelineEditorView(CPaintDC& dcPaintDC)
 	DrawSeekBar(dcPaintDC, iHeight);
 	
 	// 静止クリップ描画
-	DrawClip(iHeight, dcPaintDC);
+	DrawClip(dcPaintDC, iHeight);
 	
 	// 操作イメージ描画
 	if ((m_pTimelineDataOperator->IsSingleInTrim() || m_pTimelineDataOperator->IsSingleOutTrim() || m_pTimelineDataOperator->IsMove())
@@ -348,7 +339,7 @@ void TimelineEditorView::DrawTimelineEditorView(CPaintDC& dcPaintDC)
 	DrawTimelineDataRect();
 
 	// トラック枠描画
-	DrawTrack(iHeight, dcPaintDC);
+	DrawTrack(dcPaintDC, iHeight);
 
 	// タイムラインカーソル／シャトル操作補助線描画
 	DrawTimelineCursor(dcPaintDC, iHeight);
@@ -401,7 +392,7 @@ void TimelineEditorView::DrawTimelineControlPanel(void)
 }
 
 // シークバー描画
-void TimelineEditorView::DrawSeekBar(const CDC& dcPaintDC, const int iHeight)
+void TimelineEditorView::DrawSeekBar(const CDC& dcPaintDC, const int& iHeight)
 {
 
 	// 背景塗りつぶし
@@ -452,7 +443,7 @@ void TimelineEditorView::DrawSeekBar(const CDC& dcPaintDC, const int iHeight)
 }
 
 // 大目盛り描画
-void TimelineEditorView::DrawBigScale(const CDC& dcPaintDC, const int iDrawFrame, const int iHeight, POINT& pScaleLine)
+void TimelineEditorView::DrawBigScale(const CDC& dcPaintDC, const int& iDrawFrame, const int& iHeight, POINT& pScaleLine)
 {
 
 	// TODO: 製品はタイムコードを表示
@@ -477,7 +468,7 @@ void TimelineEditorView::DrawBigScale(const CDC& dcPaintDC, const int iDrawFrame
 }
 
 // 中目盛り描画
-void TimelineEditorView::DrawMiddleScale(const CDC& dcPaintDC, const int iDrawFrame, const int iHeight, POINT& pScaleLine)
+void TimelineEditorView::DrawMiddleScale(const CDC& dcPaintDC, const int& iDrawFrame, const int& iHeight, POINT& pScaleLine)
 {
 
 #ifdef SEEKBAR_MIDDLESCALELINE_DRAW
@@ -506,7 +497,7 @@ void TimelineEditorView::DrawMiddleScale(const CDC& dcPaintDC, const int iDrawFr
 }
 
 // 小目盛り描画
-void TimelineEditorView::DrawSmallScale(const CDC& dcPaintDC, const int iDrawFrame, const int iHeight, POINT& pScaleLine)
+void TimelineEditorView::DrawSmallScale(const CDC& dcPaintDC, const int& iDrawFrame, const int& iHeight, POINT& pScaleLine)
 {
 	// 目盛り、ライン描画
 	DrawLine(iHeight, pScaleLine.x, m_pSeekBarRect->top + SEEKBARSMALLSCALE_TOPMARGIN, pScaleLine.x, m_pSeekBarRect->bottom,
@@ -528,7 +519,7 @@ void TimelineEditorView::DrawTrackHeader(void)
 }
 
 // トラック描画
-void TimelineEditorView::DrawTrack(const int iHeight, const CPaintDC& dcPaintDC)
+void TimelineEditorView::DrawTrack(const CPaintDC& dcPaintDC, const int& iHeight)
 {
 	// TODO: とりあえず今は枠と名前だけ
 	TrackDataRectList* pTrackDataRectList = m_pTrackDataVideoManager->GetTrackDataRectList();
@@ -556,20 +547,20 @@ void TimelineEditorView::DrawTimelineDataRect(void)
 }
 
 // クリップの描画を行う
-BOOL TimelineEditorView::DrawClip(const int iHeight, CPaintDC& dcPaintDC)
+BOOL TimelineEditorView::DrawClip(const CPaintDC& dcPaintDC, const int& iHeight)
 {
 	int iClipCount = 0;
 	TrackDataRectList* pTrackDataRectList = m_pTrackDataVideoManager->GetTrackDataRectList();
 	for (int i = 0; i < m_pTrackDataVideoManager->GetTrackCount(); ++i)
 	{
-		iClipCount = DrawClipInTrack(m_pTrackDataVideoManager->GetTrackDataRect(pTrackDataRectList->at(i)), iHeight, dcPaintDC, iClipCount);
+		iClipCount = DrawClipInTrack(dcPaintDC,  m_pTrackDataVideoManager->GetTrackDataRect(pTrackDataRectList->at(i)), iHeight, iClipCount);
 
 	}
 	return TRUE;
 }
 
 // トラック内の表示範囲内クリップをサーチして描画
-int TimelineEditorView::DrawClipInTrack(TrackDataRect* pTrackDataRect, const int iHeight, CPaintDC& dcPaintDC, int iClipTotalCount)
+int TimelineEditorView::DrawClipInTrack(const CPaintDC& dcPaintDC, TrackDataRect* pTrackDataRect, const int& iHeight, int iClipTotalCount)
 {
 	//TODO: 毎回全サーチするのではなくてvectorとかに表示範囲のオブジェクトを設定しておいて操作のたびにvectorを更新する
 	int iStartFrame = m_pTimelineDataOperator->GetOperatingLeftFrameNumber();
@@ -577,8 +568,9 @@ int TimelineEditorView::DrawClipInTrack(TrackDataRect* pTrackDataRect, const int
 	{
 		iStartFrame = 0;
 	}
-	ClipDataPositionMap mpClipDataMap;
-	int iClipCount = pTrackDataRect->GetTrackDataInfo()->GetClipDataInRange(iStartFrame, m_pTimelineDataOperator->GetOperatingRightFrameNumber(), mpClipDataMap);
+	//ClipDataPositionMap mpClipDataMap;
+	m_mpClipMap.clear();
+	int iClipCount = pTrackDataRect->GetTrackDataInfo()->GetClipDataInRange(iStartFrame, m_pTimelineDataOperator->GetOperatingRightFrameNumber(), m_mpClipMap);
 	ClipDataRect* pClipData;
 	ClipDataRect* pClipDataLeft;
 	pClipDataLeft = nullptr;
@@ -590,8 +582,8 @@ int TimelineEditorView::DrawClipInTrack(TrackDataRect* pTrackDataRect, const int
 		HFONT hfDrawFont;
 		CreateDrawFont(13, 0, DEFAULT_FONTFACE, hfDrawFont);
 #endif
-		ClipDataPositionMap::iterator itr = mpClipDataMap.begin();
-		while (itr != mpClipDataMap.end())
+		ClipDataPositionMap::iterator itr = m_mpClipMap.begin();
+		while (itr != m_mpClipMap.end())
 		{
 			pClipData = (*itr).second;
 			m_pTimelineDataOperator->CalcClipRectDisplayPoint(static_cast<CRect&>(*pClipData), pClipData, static_cast<CRect>(pTrackDataRect));
@@ -602,13 +594,13 @@ int TimelineEditorView::DrawClipInTrack(TrackDataRect* pTrackDataRect, const int
 				// トランジション部分塗り替え
 				if (pClipData->left < pClipDataLeft->right)
 				{
-					m_pTransisionRect->CopyRect(pClipData);
-					m_pTransisionRect->right = pClipDataLeft->right;
-					m_pTransisionRect->SetVert(iHeight);
-					m_pTransisionRect->DrawMyFillRect();
-					m_pTransisionRect->DrawMyLeftLine();
-					m_pTransisionRect->DrawMyRightLine();
-					m_pTransisionRect->SetRectEmpty();
+					m_pTransitionRect->CopyRect(pClipData);
+					m_pTransitionRect->right = pClipDataLeft->right;
+					m_pTransitionRect->SetVert(iHeight);
+					m_pTransitionRect->DrawMyFillRect();
+					m_pTransitionRect->DrawMyLeftLine();
+					m_pTransitionRect->DrawMyRightLine();
+					m_pTransitionRect->SetRectEmpty();
 
 				}
 				else if (pClipData->left == pClipDataLeft->right)
@@ -620,7 +612,6 @@ int TimelineEditorView::DrawClipInTrack(TrackDataRect* pTrackDataRect, const int
 			++itr;
 
 #ifdef _DEBUG
-			int iOutPoint = pClipData->GetTimelineInPoint() + pClipData->GetDuration() - 1;
 			strFrameNumber.Format(_T(" L:%d T:%d R:%d B:%d I:%d O:%d D:%d i:%d o:%d"), pClipData->left, pClipData->top, pClipData->right, pClipData->bottom, pClipData->GetTimelineInPoint(), pClipData->GetTimelineOutPoint(), pClipData->GetDuration(), pClipData->GetInPoint(), pClipData->GetOutPoint());
 			ChangeScreenPointToOpenGLPoint(5, 105 + (iClipTotalCount * 15), iHeight, dPointX, dPointY);
 			DrawTextOnGL(static_cast<PCTSTR>(pTrackDataRect->GetTrackName() + strFrameNumber), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
@@ -628,6 +619,7 @@ int TimelineEditorView::DrawClipInTrack(TrackDataRect* pTrackDataRect, const int
 #endif
 			++iClipTotalCount;
 		}
+		m_mpClipMap.clear();
 #ifdef _DEBUG
 		DeleteObject(hfDrawFont);
 #endif
@@ -636,7 +628,7 @@ int TimelineEditorView::DrawClipInTrack(TrackDataRect* pTrackDataRect, const int
 }
 
 // 操作中クリップの描画を行う
-BOOL TimelineEditorView::DrawOperatingClip(const CDC& dcPaintDC, const int iHeight)
+BOOL TimelineEditorView::DrawOperatingClip(const CDC& dcPaintDC, const int& iHeight)
 {
 	// TODO: 元のクリップの色を変える　元々各タイミングで実施するよう変更
 	m_pOperatingClipData->DrawOperatingOldRect(iHeight);
@@ -673,12 +665,12 @@ BOOL TimelineEditorView::DrawOperatingClip(const CDC& dcPaintDC, const int iHeig
 			static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 		if (m_pTimelineDataOperator->IsSingleInTrim())
 		{
-			iPoint = m_pOperatingClipData->GetTimelineInPoint() + m_pOperatingClipData->GetDuration() - 1;
+			iPoint = m_pOperatingClipData->GetTimelineOutPoint();
 			iDuration = m_pOperatingClipData->GetDuration() - m_pTimelineDataOperator->GetOperatingClipFrameCount();
 		}
 		else
 		{
-			iPoint = m_pOperatingClipData->GetTimelineInPoint() + m_pOperatingClipData->GetDuration() - 1 + m_pTimelineDataOperator->GetOperatingClipFrameCount();
+			iPoint = m_pOperatingClipData->GetTimelineOutPoint() + m_pTimelineDataOperator->GetOperatingClipFrameCount();
 			iDuration = m_pOperatingClipData->GetDuration() + m_pTimelineDataOperator->GetOperatingClipFrameCount();
 		}
 		strText.Format(_T("TrimingClipOutPoint  %d"), iPoint);
@@ -747,7 +739,7 @@ BOOL TimelineEditorView::DrawOperatingClip(const CDC& dcPaintDC, const int iHeig
 }
 
 // ドラッグ＆ドロップ中のイメージを描画する
-BOOL TimelineEditorView::DrawDragAndDropClip(const CDC& dcPaintDC, const int iHeight)
+BOOL TimelineEditorView::DrawDragAndDropClip(const CDC& dcPaintDC, const int& iHeight)
 {
 	ClipDataRect* pClipRect = m_pTimelineDataOperator->GetDragAndDropClipDataRect();
 	if (m_pTimelineDataOperator->EnableDrawDragRect())
@@ -794,7 +786,7 @@ BOOL TimelineEditorView::DrawDragAndDropClip(const CDC& dcPaintDC, const int iHe
 }
 
 // タイムラインカーソルの描画を行う
-BOOL TimelineEditorView::DrawTimelineCursor(const CDC& dcPaintDC, const int iHeight)
+BOOL TimelineEditorView::DrawTimelineCursor(const CDC& dcPaintDC, const int& iHeight)
 {
 	// ラインを描画
 	DrawLine(iHeight, m_iTimelineCursorPoint, m_pSeekBarRect->top, m_iTimelineCursorPoint, m_pTimelineDataRect->bottom,
@@ -914,13 +906,6 @@ void TimelineEditorView::SetPanelRect(void)
 	m_pTimelineDataRect->top = m_pTrackHeaderRect->top;
 	m_pTimelineDataRect->SetVert(rcViewRect.Height());
 
-	// タイムラインカーソルヒット領域の配置
-	m_pTimelineCursorHitArea->CopyRect(m_pTimelineEditPanelRect);
-	m_pTimelineCursorHitArea->top = m_pSeekBarRect->top;
-	m_pTimelineCursorHitArea->left = m_iTimelineCursorPoint - kTimelineCursorDragArea;
-	m_pTimelineCursorHitArea->right = m_iTimelineCursorPoint + kTimelineCursorDragArea;
-	m_pTimelineCursorHitArea->SetVert(rcViewRect.Height());
-
 	TrackDataRectList* pTrackDataRectList = m_pTrackDataVideoManager->GetTrackDataRectList();
 	TrackDataRect* pTrackDataRectBefor = m_pTrackDataVideoManager->GetTrackDataRect(pTrackDataRectList->at(0));
 	pTrackDataRectBefor->CopyRect(m_pTimelineEditPanelRect);
@@ -940,6 +925,13 @@ void TimelineEditorView::SetPanelRect(void)
 
 	m_pTimelineDataOperator->CalcTimelineDisplayRange();
 	m_iTimelineCursorPoint = m_pTimelineDataOperator->GetTimelineCursorPoint();
+
+	// タイムラインカーソルヒット領域の配置
+	m_pTimelineCursorHitArea->CopyRect(m_pTimelineEditPanelRect);
+	m_pTimelineCursorHitArea->top = m_pSeekBarRect->top;
+	m_pTimelineCursorHitArea->left = m_iTimelineCursorPoint - kTimelineCursorDragArea;
+	m_pTimelineCursorHitArea->right = m_iTimelineCursorPoint + kTimelineCursorDragArea;
+	m_pTimelineCursorHitArea->SetVert(rcViewRect.Height());
 
 	return;
 }
@@ -983,10 +975,10 @@ void TimelineEditorView::InitAreaRect(void)
 	m_pTimelineCursorHitArea = m_pTimelineDataOperator->GetTimelineCursorHitArea();
 	m_pTimelineCursorHitArea->SetRectEmpty();
 
-	m_pTransisionRect = m_pTimelineDataOperator->GetTransisionRect();
-	m_pTransisionRect->SetRectEmpty();
-	m_pTransisionRect->SetColor(ACCENTCOLOR4_BRUSH_FLOAT, ACCENTCOLOR3_BRUSH_FLOAT, ACCENTCOLOR4_BRUSH_FLOAT, ACCENTCOLOR3_BRUSH_FLOAT);
-	m_pTransisionRect->SetBorderColor(LIGHTGRAYCOLOR3_BRUSH_FLOAT, LIGHTGRAYCOLOR3_BRUSH_FLOAT, LIGHTGRAYCOLOR3_BRUSH_FLOAT, LIGHTGRAYCOLOR3_BRUSH_FLOAT);
+	m_pTransitionRect = m_pTimelineDataOperator->GetTransitionRect();
+	m_pTransitionRect->SetRectEmpty();
+	m_pTransitionRect->SetColor(ACCENTCOLOR4_BRUSH_FLOAT, ACCENTCOLOR3_BRUSH_FLOAT, ACCENTCOLOR4_BRUSH_FLOAT, ACCENTCOLOR3_BRUSH_FLOAT);
+	m_pTransitionRect->SetBorderColor(LIGHTGRAYCOLOR3_BRUSH_FLOAT, LIGHTGRAYCOLOR3_BRUSH_FLOAT, LIGHTGRAYCOLOR3_BRUSH_FLOAT, LIGHTGRAYCOLOR3_BRUSH_FLOAT);
 }
 
 // 動作確認用オブジェクトの初期設定
@@ -997,29 +989,6 @@ void TimelineEditorView::InitTestObject(void)
 	m_pTrackDataVideoManager->CreateTrackData(0, uiTrackId, uiTrackRectId);
 	m_pTrackDataVideoManager->CreateTrackData(1, uiTrackId, uiTrackRectId);
 	m_pTrackDataVideoManager->CreateTrackData(2, uiTrackId, uiTrackRectId);
-
-	//UUID uiClipManagerUUID;
-	//PCTSTR pszClipInfoUUID = nullptr, pszClipRectUUID = nullptr;
-	//ClipDataRect* pClipDataRect = nullptr;
-	//m_pTimelineDataManager->GetClipDataManager(uiClipManagerUUID)->CreateClipData(pszClipInfoUUID, pszClipRectUUID);
-	//pClipDataRect = m_pTimelineDataManager->GetClipDataManager(uiClipManagerUUID)->GetClipDataRect(pszClipRectUUID);
-	//pClipDataRect->SetTimelineInPoint(101);
-	//pClipDataRect->SetDuration(10);
-	//m_pTrackDataVideoManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->GetTimelineInPoint(), pClipDataRect);
-
-	//m_pTimelineDataManager->GetClipDataManager(uiClipManagerUUID)->CreateClipData(pszClipInfoUUID, pszClipRectUUID);
-	//pClipDataRect = m_pTimelineDataManager->GetClipDataManager(uiClipManagerUUID)->GetClipDataRect(pszClipRectUUID);
-	//pClipDataRect->SetTimelineInPoint(600);
-	//pClipDataRect->SetDuration(100);
-	//m_pTrackDataVideoManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->GetTimelineInPoint(), pClipDataRect);
-
-	//m_pTimelineDataManager->GetClipDataManager(uiClipManagerUUID)->CreateClipData(pszClipInfoUUID, pszClipRectUUID);
-	//pClipDataRect = m_pTimelineDataManager->GetClipDataManager(uiClipManagerUUID)->GetClipDataRect(pszClipRectUUID);
-	//pClipDataRect->SetTimelineInPoint(300);
-	//pClipDataRect->SetDuration(50);
-	//m_pTrackDataVideoManager->GetTrackDataInfo(uiTrackId)->AddClip(pClipDataRect->GetTimelineInPoint(), pClipDataRect);
-
-
 
 }
 
@@ -1037,3 +1006,39 @@ void TimelineEditorView::CreateZoomMap(void)
 
 
 
+
+
+void TimelineEditorView::OnContextMenu(CWnd* pWnd, CPoint point)
+{
+	// TODO: ここにメッセージ ハンドラー コードを追加します。
+	CPoint poClientPoint = point;
+	ScreenToClient(&poClientPoint);
+	CMenu mContextMenu;
+	if (m_pTimelineDataOperator->OnContextMenu(poClientPoint, mContextMenu))
+	{
+		mContextMenu.GetSubMenu(0)->TrackPopupMenu(TPM_LEFTALIGN | TPM_LEFTBUTTON, point.x, point.y, this);
+	}
+}
+
+
+void TimelineEditorView::OnClipDelete()
+{
+	// TODO: ここにコマンド ハンドラー コードを追加します。
+
+	if (m_pTimelineDataOperator->DeleteClip())
+	{
+		Invalidate();
+	}
+}
+
+
+void TimelineEditorView::OnTransitionSetIn()
+{
+	// TODO: ここにコマンド ハンドラー コードを追加します。
+
+	CString strMessage;
+	if (m_pTimelineDataOperator->OnTransitionSetIn(static_cast<PCTSTR>(strMessage)))
+	{
+		Invalidate();
+	}
+}

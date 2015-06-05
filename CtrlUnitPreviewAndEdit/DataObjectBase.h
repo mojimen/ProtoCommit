@@ -1,6 +1,7 @@
 #pragma once
 
-typedef enum DataTag{
+typedef enum DataTag
+{
 	A_TRACKDATAMANAGER_VIDEO,
 	A_TRACKDATAMANAGER_AUDIO,
 	A_TRACKDATAMANAGER_INFO,
@@ -10,7 +11,11 @@ typedef enum DataTag{
 
 	A_CLIPDATAMANAGER,
 	A_CLIPDATAINFO,
-	A_CLIPDATARECT
+	A_CLIPDATARECT,
+
+	TRANSITIONMANAGER,
+	TRANSITIONDATAIN,
+	TRANSITIONDATAOUT
 };
 
 // DataObjectBase コマンド ターゲット
@@ -27,6 +32,11 @@ protected:
 	CString m_strUUID;
 
 	BOOL InitializeData(DataTag m_eTag);
+
+public:
+	DataTag GetDataTag(void) { return m_eTag; }
+	UUID GetUUID(void) { return m_uiUUID; }
+	PCTSTR GetStrUUID(void) { return static_cast<PCTSTR>(m_strUUID); }
 };
 
 

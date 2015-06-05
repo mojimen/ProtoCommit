@@ -17,6 +17,11 @@ ClipDataInfo::ClipDataInfo()
 	m_iOutPoint = 0;
 	m_iDuration = 0;
 	m_iInOffset = 0;
+	m_fInTransition = FALSE;
+	m_pInTransitionClipInfo = nullptr;
+	m_fOutTransition = FALSE;
+	m_pOutTransitionClipInfo = nullptr;
+	m_pClipDataRect = nullptr;
 }
 
 ClipDataInfo::ClipDataInfo(InfoKind eKind)
@@ -52,4 +57,26 @@ BOOL ClipDataInfo::DeleteClipData(void)
 		return TRUE;
 	}
 	return FALSE;
+}
+
+void ClipDataInfo::ResetTransition(BOOL fIn, int iLength)
+{
+	if (fIn)
+	{
+		m_fInTransition = FALSE;
+		m_strInTransitionUUID.Empty();
+		m_pInTransitionClipInfo = nullptr;
+		m_iInPoint += iLength;
+		m_iTimelineInPoint += iLength;
+		m_iDuration -= iLength;
+	}
+	else
+	{
+		m_fOutTransition = FALSE;
+		m_strOutTransitionUUID.Empty();
+		m_pOutTransitionClipInfo = nullptr;
+		m_iOutPoint -= iLength;
+		m_iTimelineOutPoint -= iLength;
+		m_iDuration -= iLength;
+	}
 }

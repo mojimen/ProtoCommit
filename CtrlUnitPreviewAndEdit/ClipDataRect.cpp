@@ -12,6 +12,7 @@
 
 ClipDataRect::ClipDataRect()
 {
+	m_pClipDataInfo = nullptr;
 }
 
 ClipDataRect::~ClipDataRect()

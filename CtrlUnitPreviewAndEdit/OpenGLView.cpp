@@ -261,6 +261,7 @@ int OpenGLView::DrawTextOnGL(PCTSTR pszStr, HDC hDC, HFONT& hfFont, GLfloat gfRe
 	for (unsigned int textCnt = 0; textCnt < textLength; ++textCnt)
 	{
 		glCallList(listbaseIdx + (GLuint)textCnt);
+		glDeleteLists(listbaseIdx + (GLuint)textCnt, 1);
 	}
 
 	SelectObject(hDC, hfOldFont);
