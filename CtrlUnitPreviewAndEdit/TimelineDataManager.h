@@ -24,6 +24,7 @@ typedef std::vector<UUID> TrackDataRectList;
 
 typedef std::map<int, ClipDataRect*> ClipDataPositionMap;	//InPoint,ClipDataPointer 
 //typedef std::map<int, UUID> ClipDataPositionMap;	//InPoint,ClipId 
+typedef std::map<int, ClipDataInfo*> ClipDataPositionInfoMap;	//InPoint,ClipDataInfoPointer 
 
 typedef std::map<CString, ClipDataInfo*> ClipDataInfoMap;
 typedef std::map<CString, ClipDataRect*> ClipDataRectMap;

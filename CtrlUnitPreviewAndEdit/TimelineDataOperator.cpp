@@ -29,6 +29,8 @@ TimelineDataOperator::TimelineDataOperator()
 	m_fDragAndDrop = FALSE;
 	m_fAllowFile = FALSE;
 	m_fAllowDrop = FALSE;
+	m_fPreviewWork = FALSE;
+	m_fPlay = FALSE;
 
 	m_iLeftFrameNumber = 0;
 	m_iRightFrameNumber = 0;
@@ -180,6 +182,11 @@ BOOL TimelineDataOperator::OnLButtonDown(UINT nFlags, CPoint point)
 	// クリップ内判定
 	if (IsPointInClip(point))
 	{
+		// 再生中
+		if (m_fPreviewWork)
+		{
+			return FALSE;
+		}
 		if (!(m_pOperatingClipData->GetInTransition()) && !(m_pOperatingClipData->GetOutTransition()))
 		{
 			// Move/Trimの振り分け
@@ -204,6 +211,11 @@ BOOL TimelineDataOperator::OnLButtonDown(UINT nFlags, CPoint point)
 		// タイムラインカーソル判定
 		if (m_pTimelineCursorHitArea->PtInRect(point))
 		{
+			// 再生中
+			if (m_fPreviewWork)
+			{
+				return FALSE;
+			}
 			m_fLButtonDown = TRUE;
 			m_fDragShuttle = TRUE;
 			m_poMousePointerLocation = point;	// 移動量計算のため、初期座標を保存
@@ -214,6 +226,11 @@ BOOL TimelineDataOperator::OnLButtonDown(UINT nFlags, CPoint point)
 		// シークバー内判定
 		else if (IsPointInSeekBar(point))
 		{
+			// 再生中
+			if (m_fPreviewWork)
+			{
+				return FALSE;
+			}
 			m_fLButtonDown = TRUE;
 			m_fScrub = TRUE;
 			m_poMousePointerLocation = point;	// 移動量計算のため、初期座標を保存
@@ -281,6 +298,11 @@ BOOL TimelineDataOperator::OnLButtonDown(UINT nFlags, CPoint point)
 // Ｌボタンアップ
 BOOL TimelineDataOperator::OnLButtonUp(UINT nFlags, CPoint point)
 {
+	// 再生中
+	if (m_fPreviewWork)
+	{
+		return FALSE;
+	}
 	m_fLButtonDown = FALSE;
 	if (m_fMove)
 	{
@@ -321,12 +343,18 @@ BOOL TimelineDataOperator::OnLButtonUp(UINT nFlags, CPoint point)
 			m_iTimelineCursorFramePosition = iFrame;
 			m_iLeftFrameNumber += m_iOperatingFrameCount;
 			m_iRightFrameNumber += m_iOperatingFrameCount;
+			m_iOperatingTimelineCursorFramePosition = m_iTimelineCursorFramePosition;
+			m_iOperatingLeftFrameNumber = m_iLeftFrameNumber;
+			m_iOperatingRightFrameNumber = m_iRightFrameNumber;
 		}
 		else
 		{
 			m_iTimelineCursorFramePosition += m_iOperatingFrameCount;
 			m_iLeftFrameNumber += m_iOperatingFrameCount;
 			m_iRightFrameNumber += m_iOperatingFrameCount;
+			m_iOperatingTimelineCursorFramePosition = m_iTimelineCursorFramePosition;
+			m_iOperatingLeftFrameNumber = m_iLeftFrameNumber;
+			m_iOperatingRightFrameNumber = m_iRightFrameNumber;
 		}
 	}
 
@@ -401,6 +429,11 @@ BOOL TimelineDataOperator::OnRButtonUp(UINT nFlags, CPoint point)
 // マウス移動
 BOOL TimelineDataOperator::OnMouseMove(UINT nFlags, CPoint point)
 {
+	// 再生中
+	if (m_fPreviewWork)
+	{
+		return FALSE;
+	}
 	if (m_fLButtonDown)
 	{
 		CSize szMoveSize(point - m_poMousePointerLocation);
@@ -460,6 +493,103 @@ BOOL TimelineDataOperator::OnMouseMove(UINT nFlags, CPoint point)
 	return FALSE;
 }
 
+// マウスホイール
+BOOL TimelineDataOperator::OnMouseWheel(UINT nFlags, short zDelta, CPoint poPoint)
+{
+	int iLength = static_cast<int>(ceil(zDelta / 120.0)) * -1;
+
+	// クリップ内判定
+	// TODO: ホイール中にクリップをドラッグするとまずいので抑止が必要だけどどうやる？
+	if (IsPointInClip(poPoint))
+	{
+		// 再生中
+		if (m_fPreviewWork)
+		{
+			return FALSE;
+		}
+		if (m_fLButtonDown)
+		{
+			return FALSE;
+		}
+		if (!(m_pOperatingClipData->GetInTransition()) && !(m_pOperatingClipData->GetOutTransition()))
+		{
+			int iIn = m_pOperatingClipData->GetTimelineInPoint();
+			if (iIn + iLength < 0)
+			{
+				return FALSE;
+			}
+			CalcClipRectDisplayPoint(static_cast<CRect>(m_pOperatingClipData), m_pOperatingClipData, static_cast<CRect>(m_pSelectedTrack));
+			m_pOperateToTrack = m_pSelectedTrack;
+			m_pOperateToTrackInfo = m_pSelectedTrackInfo;
+			m_iOperatingClipFrameCount = iLength;
+			if (!CheckMove(poPoint))
+			{
+				m_iOperatingClipFrameCount = 0;
+				return FALSE;
+			}
+			m_pSelectedTrackInfo->DeleteClip(iIn);
+			iIn += iLength;
+			m_pOperatingClipData->SetTimelineInPoint(iIn);
+			m_pOperatingClipData->SetTimelineOutPoint();
+			m_pSelectedTrackInfo->AddClip(iIn, m_pOperatingClipData);
+			m_pOperatingClipData->CopyRect(m_pOperatingClipData->GetOperatingRect());
+			m_iOperatingClipFrameCount = 0;
+		}
+		return TRUE;
+	}
+	else if (IsPointInTimelineControlPanel(poPoint))
+	{
+		if (m_iFramePerPoint < 1)
+		{
+			m_iPointPerFrame += iLength;
+			if (m_iPointPerFrame < 1)
+			{
+				m_iPointPerFrame = 0;
+				m_iFramePerPoint = 2;
+			}
+		}
+		else
+		{
+			m_iFramePerPoint -= iLength;
+			if (m_iFramePerPoint < 1)
+			{
+				m_iFramePerPoint = 0;
+				m_iPointPerFrame = 2;
+			}
+		}
+		if (ChangeDisplayScale())
+		{
+			return TRUE;
+		}
+		return FALSE;
+	}
+	else
+	{
+		// 再生中
+		if (m_fPreviewWork)
+		{
+			return FALSE;
+		}
+		m_iTimelineCursorFramePosition += iLength;
+		if (m_iTimelineCursorFramePosition < 0)
+		{
+			m_iTimelineCursorFramePosition = 0;
+		}
+		CalcTimelineDisplayRange();
+		if (m_iPointPerFrame > 0)
+		{
+			return TRUE;
+		}
+		if (m_iTimelineCursorFramePosition % m_iFramePerPoint == 0)
+		{
+			return TRUE;
+		}
+		return FALSE;
+	}
+	return TRUE;
+}
+
+
 // ドロップによるファイルのクリップ化
 BOOL TimelineDataOperator::OnDropFiles(const HDROP& hDropInfo, CString& strFileName)
 {
@@ -475,6 +605,11 @@ BOOL TimelineDataOperator::OnDropFiles(const HDROP& hDropInfo, CString& strFileN
 	}
 	m_fAllowDrop = FALSE;
 
+	// 再生中
+	if (m_fPreviewWork)
+	{
+		return FALSE;
+	}
 	////ドロップされたファイルの個数をチェック
 	//UINT uCount = DragQueryFile(hDropInfo, ~0lu, NULL, 0);
 	//if (uCount != 1)
@@ -525,6 +660,11 @@ BOOL TimelineDataOperator::OnDropFiles(const HDROP& hDropInfo, CString& strFileN
 // ドラッグ＆ドロップ開始
 BOOL TimelineDataOperator::OnDragEnter(COleDataObject* pDataObject, DWORD dwKeyState, const CPoint& point)
 {
+	// 再生中
+	if (m_fPreviewWork)
+	{
+		return FALSE;
+	}
 	m_fDragAndDrop = TRUE;
 	m_fAllowFile = FALSE;
 	m_fAllowDrop = FALSE;
@@ -594,6 +734,11 @@ void TimelineDataOperator::OnDragLeave(void)
 // ドラッグ＆ドロップ移動
 DROPEFFECT TimelineDataOperator::OnDragOver(COleDataObject* pDataObject, DWORD dwKeyState, const CPoint& point)
 {
+	// 再生中
+	if (m_fPreviewWork)
+	{
+		return FALSE;
+	}
 	DROPEFFECT dDropEff = DROPEFFECT_COPY;
 	if (!m_fAllowFile)
 	{
@@ -614,7 +759,7 @@ DROPEFFECT TimelineDataOperator::OnDragOver(COleDataObject* pDataObject, DWORD d
 		CalcClipRectDisplayPoint(static_cast<CRect&>(*m_pDnDClipDataRect), m_pDnDClipDataRect, m_pSelectedTrack);
 		m_pDnDClipDataRect->SetOperatingRect(static_cast<CRect>(m_pDnDClipDataRect));
 		// ドロップ可否判定
-		if (m_pSelectedTrack->GetTrackDataInfo()->CheckMove(nullptr, m_pDnDClipDataRect->GetTimelineInPoint(), m_pDnDClipDataRect->GetTimelineOutPoint()) != nullptr)
+		if (m_pSelectedTrack->GetTrackDataInfo()->CheckPlaceInRange(nullptr, m_pDnDClipDataRect->GetTimelineInPoint(), m_pDnDClipDataRect->GetTimelineOutPoint()) != nullptr)
 		{
 			dDropEff = DROPEFFECT_NONE;
 		}
@@ -636,6 +781,11 @@ DROPEFFECT TimelineDataOperator::OnDragOver(COleDataObject* pDataObject, DWORD d
 // 右クリック時の表示メニューを確定する
 BOOL TimelineDataOperator::OnContextMenu(const CPoint& poClientPoint, CMenu& mContextMenu)
 {
+	// 再生中
+	if (m_fPreviewWork)
+	{
+		return FALSE;
+	}
 	if (!(IsPointInClip(poClientPoint)))
 	{
 		return FALSE;
@@ -665,13 +815,15 @@ BOOL TimelineDataOperator::OnContextMenu(const CPoint& poClientPoint, CMenu& mCo
 	CMenu* pDel = nullptr, *pSubDel = nullptr;
 
 	// In側メニューの調整
-	if (IsTransitionSetInSide(*m_pSelectedTrackInfo, *m_pOperatingClipData) != nullptr)
+	if (m_pOperatingClipData->GetInTransition())
 	{
+		// 既にトランジション設定ありの場合、In設定メニューを削除
 		pSubMenu->RemoveMenu(ID_TRANSITION_SET_IN, MF_BYCOMMAND);
 		fDelSetIn = TRUE;
 	}
 	else
 	{
+		// 既にトランジション設定なしの場合、In解除メニューを削除
 		pDel = FindSubMenuFromString(pSubMenu, static_cast<LPCTSTR>(strTransReset), iPos);
 		if (iPos >= 0)
 		{
@@ -684,26 +836,43 @@ BOOL TimelineDataOperator::OnContextMenu(const CPoint& poClientPoint, CMenu& mCo
 			pSubDel = nullptr;
 		}
 		pDel = nullptr;
-		if (m_pOperatingClipData->GetInPoint() == 0)
+		if ((m_pOperatingClipData->GetInPoint() == 0) || (m_pOperatingClipData->GetDuration() <= 1))
 		{
+			// 自身のIn側ギャップがないまたは長さが足りない場合、In設定メニューを削除
 			pSubMenu->RemoveMenu(ID_TRANSITION_SET_IN, MF_BYCOMMAND);
 			fDelSetIn = TRUE;
 		}
-		else if (IsClipAtIn(*m_pSelectedTrackInfo, m_pOperatingClipData->GetTimelineInPoint()) == nullptr)
+		else
 		{
-			pSubMenu->RemoveMenu(ID_TRANSITION_SET_IN, MF_BYCOMMAND);
-			fDelSetIn = TRUE;
+			ClipDataRect* pClipRect = IsClipAtIn(*m_pSelectedTrackInfo, m_pOperatingClipData->GetTimelineInPoint());
+			if (pClipRect == nullptr)
+			{
+				// In側隣接クリップなしの場合、In設定メニューを削除
+				pSubMenu->RemoveMenu(ID_TRANSITION_SET_IN, MF_BYCOMMAND);
+				fDelSetIn = TRUE;
+			}
+			else
+			{
+				if ((pClipRect->GetOutPoint() == pClipRect->GetFileDuration()) || (pClipRect->GetDuration() <= 1))
+				{
+					// In側隣接クリップありだが、隣接クリップのOut側ギャップがないまたは長さが足りない場合、Out設定メニューを削除
+					pSubMenu->RemoveMenu(ID_TRANSITION_SET_IN, MF_BYCOMMAND);
+					fDelSetIn = TRUE;
+				}
+			}
 		}
 	}
 
 	// Out側メニューの調整
-	if (IsTransitionSetOutSide(*m_pOperatingClipData) != nullptr)
+	if (m_pOperatingClipData->GetOutTransition())
 	{
+		// 既にトランジション設定ありの場合、Out設定メニューを削除
 		pSubMenu->RemoveMenu(ID_TRANSITION_SET_OUT, MF_BYCOMMAND);
 		fDelSetOut = TRUE;
 	}
 	else
 	{
+		// 既にトランジション設定なしの場合、Out解除メニューを削除
 		pDel = FindSubMenuFromString(pSubMenu, static_cast<LPCTSTR>(strTransReset), iPos);
 		if (iPos >= 0)
 		{
@@ -716,15 +885,30 @@ BOOL TimelineDataOperator::OnContextMenu(const CPoint& poClientPoint, CMenu& mCo
 			pSubDel = nullptr;
 		}
 		pDel = nullptr;
-		if (m_pOperatingClipData->GetOutPoint() == m_pOperatingClipData->GetFileDuration())
+		if ((m_pOperatingClipData->GetOutPoint() == m_pOperatingClipData->GetFileDuration()) || (m_pOperatingClipData->GetDuration() <= 1))
 		{
+			// 自身のOut側ギャップがないまたは長さが足りない場合、Out設定メニューを削除
 			pSubMenu->RemoveMenu(ID_TRANSITION_SET_OUT, MF_BYCOMMAND);
 			fDelSetOut = TRUE;
 		}
-		else if (IsClipAtOut(*m_pSelectedTrackInfo, m_pOperatingClipData->GetTimelineOutPoint()) == nullptr)
+		else 
 		{
-			pSubMenu->RemoveMenu(ID_TRANSITION_SET_OUT, MF_BYCOMMAND);
-			fDelSetOut = TRUE;
+			ClipDataRect* pClipRect = IsClipAtOut(*m_pSelectedTrackInfo, m_pOperatingClipData->GetTimelineOutPoint());
+			if (pClipRect == nullptr)
+			{
+				// Out側隣接クリップなしの場合、Out設定メニューを削除
+				pSubMenu->RemoveMenu(ID_TRANSITION_SET_OUT, MF_BYCOMMAND);
+				fDelSetOut = TRUE;
+			}
+			else
+			{
+				if ((pClipRect->GetInPoint() == 0) || (pClipRect->GetDuration() <= 1))
+				{
+					// Out側隣接クリップありだが、隣接クリップのIn側ギャップがないまたは長さが足りない場合、Out設定メニューを削除
+					pSubMenu->RemoveMenu(ID_TRANSITION_SET_OUT, MF_BYCOMMAND);
+					fDelSetOut = TRUE;
+				}
+			}
 		}
 	}
 
@@ -784,6 +968,10 @@ BOOL TimelineDataOperator::OnTransitionSetIn(PCTSTR pszMessage)
 	{
 		iLength = m_pOperatingClipData->GetDuration() - 1;
 	}
+	if ((pClipRect->GetDuration() - 1) < iLength)
+	{
+		iLength = pClipRect->GetDuration() - 1;
+	}
 	if (iLength == 0)
 	{
 		pszMessage = TRANSITION_GAP_NOT_EXIST;
@@ -815,6 +1003,294 @@ BOOL TimelineDataOperator::OnTransitionSetIn(PCTSTR pszMessage)
 	pClipRect->SetOutTransitionClipInfo(m_pOperatingClipData->GetClipDataInfo());
 
 	return TRUE;
+}
+
+// トランジション設定（Out側）
+BOOL TimelineDataOperator::OnTransitionSetOut(PCTSTR pszMessage)
+{
+	ASSERT(m_pOperatingClipData);
+	ASSERT(m_pSelectedTrackInfo);
+	if ((!m_pOperatingClipData) || !(m_pSelectedTrackInfo))
+	{
+		return FALSE;
+	}
+	ClipDataRect* pClipRect = IsClipAtOut(*m_pSelectedTrackInfo, m_pOperatingClipData->GetTimelineOutPoint());
+	if (pClipRect == nullptr)
+	{
+		return FALSE;
+	}
+
+	int iLength = TRANSITION_DEFAULT_LENGTH;
+	if ((m_pOperatingClipData->GetFileDuration() - m_pOperatingClipData->GetOutPoint()) < iLength)
+	{
+		iLength = m_pOperatingClipData->GetFileDuration() - m_pOperatingClipData->GetOutPoint();
+	}
+	if (pClipRect->GetInPoint() < iLength)
+	{
+		iLength = pClipRect->GetInPoint();
+	}
+	if ((m_pOperatingClipData->GetDuration() - 1) < iLength)
+	{
+		iLength = m_pOperatingClipData->GetDuration() - 1;
+	}
+	if ((pClipRect->GetDuration() - 1) < iLength)
+	{
+		iLength = pClipRect->GetDuration() - 1;
+	}
+	if (iLength == 0)
+	{
+		pszMessage = TRANSITION_GAP_NOT_EXIST;
+		return FALSE;
+	}
+	CString strInTransitionUUID, strOutTransitionUUID;
+	if (!(m_pTransitionManager->CreateTransitionData(strInTransitionUUID, iLength)))
+	{
+		return FALSE;
+	}
+	if (!(m_pTransitionManager->CreateTransitionData(strOutTransitionUUID, iLength, FALSE)))
+	{
+		m_pTransitionManager->DeleteTransitionData(strInTransitionUUID);
+		return FALSE;
+	}
+	m_pOperatingClipData->SetOutTransitionUUID(static_cast<PCTSTR>(strOutTransitionUUID));
+	m_pOperatingClipData->AddOutPoint(iLength);
+	m_pOperatingClipData->AddTimelineOutPoint(iLength);
+	m_pOperatingClipData->SetDuration();
+	m_pOperatingClipData->SetOutTransition(TRUE);
+	m_pOperatingClipData->SetOutTransitionClipInfo(pClipRect->GetClipDataInfo());
+
+	pClipRect->SetInTransitionUUID(static_cast<PCTSTR>(strInTransitionUUID));
+	m_pSelectedTrackInfo->ChangeClip(pClipRect->GetTimelineInPoint(), pClipRect->GetTimelineInPoint() + (iLength * -1), pClipRect);
+	pClipRect->AddInPoint(iLength * -1);
+	pClipRect->AddTimelineInPoint(iLength * -1);
+	pClipRect->SetDuration();
+	pClipRect->SetInTransition(TRUE);
+	pClipRect->SetInTransitionClipInfo(m_pOperatingClipData->GetClipDataInfo());
+
+	return TRUE;
+}
+
+// トランジション解除（In・中間）
+BOOL TimelineDataOperator::OnTransitionResetInCenter(void)
+{
+	ASSERT(m_pOperatingClipData);
+	ASSERT(m_pSelectedTrackInfo);
+	if ((!m_pOperatingClipData) || !(m_pSelectedTrackInfo))
+	{
+		return FALSE;
+	}
+	if (!(m_pOperatingClipData->GetInTransition()))
+	{
+		return FALSE;
+	}
+
+	// トランジションのペアを解除
+	ClipDataInfo* pClipInfo = m_pOperatingClipData->GetInTransitionClipInfo();
+	ASSERT(pClipInfo);
+	if (!pClipInfo)
+	{
+		return FALSE;
+	}
+	TransitionData* pTransitionData = m_pTransitionManager->GetTransitionData(static_cast<CString>(pClipInfo->GetOutTransitionUUID()));
+	int iLength = pTransitionData->GetTransitionDuration();
+	m_pTransitionManager->DeleteTransitionData(static_cast<CString>(pClipInfo->GetOutTransitionUUID()));
+	pClipInfo->ResetTransition(FALSE, iLength);
+	m_pTransitionManager->DeleteTransitionData(static_cast<CString>(m_pOperatingClipData->GetInTransitionUUID()));
+	int iOldInPoint = m_pOperatingClipData->GetTimelineInPoint();
+	m_pOperatingClipData->ResetTransition(TRUE, iLength);
+	m_pSelectedTrackInfo->ChangeClip(iOldInPoint, m_pOperatingClipData->GetTimelineInPoint(), m_pOperatingClipData);
+
+	return TRUE;
+}
+
+// トランジション解除（In・開始点）
+BOOL TimelineDataOperator::OnTransitionResetInStart(void)
+{
+	ASSERT(m_pOperatingClipData);
+	ASSERT(m_pSelectedTrackInfo);
+	if ((!m_pOperatingClipData) || !(m_pSelectedTrackInfo))
+	{
+		return FALSE;
+	}
+	if (!(m_pOperatingClipData->GetInTransition()))
+	{
+		return FALSE;
+	}
+
+	// トランジションのペアを解除
+	ClipDataInfo* pClipInfo = m_pOperatingClipData->GetInTransitionClipInfo();
+	ASSERT(pClipInfo);
+	if (!pClipInfo)
+	{
+		return FALSE;
+	}
+	TransitionData* pTransitionData = m_pTransitionManager->GetTransitionData(static_cast<CString>(pClipInfo->GetOutTransitionUUID()));
+	int iLength = pTransitionData->GetTransitionDuration() * 2;
+	m_pTransitionManager->DeleteTransitionData(static_cast<CString>(pClipInfo->GetOutTransitionUUID()));
+	pClipInfo->ResetTransition(FALSE, iLength);
+	m_pTransitionManager->DeleteTransitionData(static_cast<CString>(m_pOperatingClipData->GetInTransitionUUID()));
+	m_pOperatingClipData->ResetTransition(TRUE, 0);
+
+	return TRUE;
+}
+
+// トランジション解除（In・終了点）
+BOOL TimelineDataOperator::OnTransitionResetInEnd(void)
+{
+	ASSERT(m_pOperatingClipData);
+	ASSERT(m_pSelectedTrackInfo);
+	if ((!m_pOperatingClipData) || !(m_pSelectedTrackInfo))
+	{
+		return FALSE;
+	}
+	if (!(m_pOperatingClipData->GetInTransition()))
+	{
+		return FALSE;
+	}
+
+	// トランジションのペアを解除
+	ClipDataInfo* pClipInfo = m_pOperatingClipData->GetInTransitionClipInfo();
+	ASSERT(pClipInfo);
+	if (!pClipInfo)
+	{
+		return FALSE;
+	}
+	TransitionData* pTransitionData = m_pTransitionManager->GetTransitionData(static_cast<CString>(pClipInfo->GetOutTransitionUUID()));
+	int iLength = pTransitionData->GetTransitionDuration() * 2;
+	m_pTransitionManager->DeleteTransitionData(static_cast<CString>(pClipInfo->GetOutTransitionUUID()));
+	pClipInfo->ResetTransition(FALSE, 0);
+	m_pTransitionManager->DeleteTransitionData(static_cast<CString>(m_pOperatingClipData->GetInTransitionUUID()));
+	int iOldInPoint = m_pOperatingClipData->GetTimelineInPoint();
+	m_pOperatingClipData->ResetTransition(TRUE, iLength);
+	m_pSelectedTrackInfo->ChangeClip(iOldInPoint, m_pOperatingClipData->GetTimelineInPoint(), m_pOperatingClipData);
+
+	return TRUE;
+}
+
+// トランジション解除（Out・中間）
+BOOL TimelineDataOperator::OnTransitionResetOutCenter(void)
+{
+	ASSERT(m_pOperatingClipData);
+	ASSERT(m_pSelectedTrackInfo);
+	if ((!m_pOperatingClipData) || !(m_pSelectedTrackInfo))
+	{
+		return FALSE;
+	}
+	if (!(m_pOperatingClipData->GetOutTransition()))
+	{
+		return FALSE;
+	}
+
+	// トランジションのペアを解除
+	ClipDataInfo* pClipInfo = m_pOperatingClipData->GetOutTransitionClipInfo();
+	ASSERT(pClipInfo);
+	if (!pClipInfo)
+	{
+		return FALSE;
+	}
+	TransitionData* pTransitionData = m_pTransitionManager->GetTransitionData(static_cast<CString>(pClipInfo->GetInTransitionUUID()));
+	int iLength = pTransitionData->GetTransitionDuration();
+	m_pTransitionManager->DeleteTransitionData(static_cast<CString>(pClipInfo->GetInTransitionUUID()));
+	int iOldInPoint = pClipInfo->GetTimelineInPoint();
+	pClipInfo->ResetTransition(TRUE, iLength);
+	m_pSelectedTrackInfo->ChangeClip(iOldInPoint, pClipInfo->GetTimelineInPoint(), pClipInfo->GetClipDataRect());
+	m_pTransitionManager->DeleteTransitionData(static_cast<CString>(m_pOperatingClipData->GetOutTransitionUUID()));
+	m_pOperatingClipData->ResetTransition(FALSE, iLength);
+
+	return TRUE;
+}
+
+// トランジション解除（Out・開始点）
+BOOL TimelineDataOperator::OnTransitionResetOutStart(void)
+{
+	ASSERT(m_pOperatingClipData);
+	ASSERT(m_pSelectedTrackInfo);
+	if ((!m_pOperatingClipData) || !(m_pSelectedTrackInfo))
+	{
+		return FALSE;
+	}
+	if (!(m_pOperatingClipData->GetOutTransition()))
+	{
+		return FALSE;
+	}
+
+	// トランジションのペアを解除
+	ClipDataInfo* pClipInfo = m_pOperatingClipData->GetOutTransitionClipInfo();
+	ASSERT(pClipInfo);
+	if (!pClipInfo)
+	{
+		return FALSE;
+	}
+	TransitionData* pTransitionData = m_pTransitionManager->GetTransitionData(static_cast<CString>(pClipInfo->GetInTransitionUUID()));
+	int iLength = pTransitionData->GetTransitionDuration() * 2;
+	m_pTransitionManager->DeleteTransitionData(static_cast<CString>(pClipInfo->GetInTransitionUUID()));
+	pClipInfo->ResetTransition(TRUE, 0);
+	m_pTransitionManager->DeleteTransitionData(static_cast<CString>(m_pOperatingClipData->GetOutTransitionUUID()));
+	m_pOperatingClipData->ResetTransition(FALSE, iLength);
+
+	return TRUE;
+}
+
+// トランジション解除（Out・終了点）
+BOOL TimelineDataOperator::OnTransitionResetOutEnd(void)
+{
+	ASSERT(m_pOperatingClipData);
+	ASSERT(m_pSelectedTrackInfo);
+	if ((!m_pOperatingClipData) || !(m_pSelectedTrackInfo))
+	{
+		return FALSE;
+	}
+	if (!(m_pOperatingClipData->GetOutTransition()))
+	{
+		return FALSE;
+	}
+
+	// トランジションのペアを解除
+	ClipDataInfo* pClipInfo = m_pOperatingClipData->GetOutTransitionClipInfo();
+	ASSERT(pClipInfo);
+	if (!pClipInfo)
+	{
+		return FALSE;
+	}
+	TransitionData* pTransitionData = m_pTransitionManager->GetTransitionData(static_cast<CString>(pClipInfo->GetInTransitionUUID()));
+	int iLength = pTransitionData->GetTransitionDuration() * 2;
+	m_pTransitionManager->DeleteTransitionData(static_cast<CString>(pClipInfo->GetInTransitionUUID()));
+	int iOldInPoint = pClipInfo->GetTimelineInPoint();
+	pClipInfo->ResetTransition(TRUE, iLength);
+	m_pSelectedTrackInfo->ChangeClip(iOldInPoint, pClipInfo->GetTimelineInPoint(), pClipInfo->GetClipDataRect());
+	m_pTransitionManager->DeleteTransitionData(static_cast<CString>(m_pOperatingClipData->GetOutTransitionUUID()));
+	m_pOperatingClipData->ResetTransition(FALSE, 0);
+
+	return TRUE;
+}
+
+
+// 再生処理
+BOOL TimelineDataOperator::OnPlay(int iSpeed)
+{
+	if (!m_fPlay)
+	{
+		m_fPreviewWork = TRUE;
+		m_fPlay = TRUE;
+	}
+	m_iTimelineCursorFramePosition += iSpeed;
+	CalcTimelineDisplayRange();
+	if (m_iPointPerFrame > 0)
+	{
+		return TRUE;
+	}
+	if (m_iTimelineCursorFramePosition % m_iFramePerPoint == 0)
+	{
+		return TRUE;
+	}
+	return FALSE;
+}
+
+// 再生停止
+void TimelineDataOperator::OnStop(void)
+{
+	m_fPreviewWork = FALSE;
+	m_fPlay = FALSE;
 }
 
 
@@ -1000,6 +1476,7 @@ void TimelineDataOperator::CalcTimelineDisplayRange(void)
 	m_iOperatingLeftFrameNumber = m_iLeftFrameNumber;
 	m_iRightFrameNumber = m_iTimelineCursorFramePosition + static_cast<int>(ceil((iDisplayFrameCount / 2.0f))) + 1;
 	m_iOperatingRightFrameNumber = m_iRightFrameNumber;
+	m_iOperatingTimelineCursorFramePosition = m_iTimelineCursorFramePosition;
 }
 
 
@@ -1139,11 +1616,20 @@ BOOL TimelineDataOperator::IsPointInTrimRange(const CPoint& point, const CRect& 
 
 	// In側判定
 	rcTrimRect.CopyRect(rcClipRect);
-	// クリップ幅が規定値未満の場合はInTrim決めうち
+	// クリップ幅が規定値未満の場合はInTrim決めうちでInTrim可否をチェック
 	if (rcTrimRect.Width() < kClipHitCheckMinWidth)
 	{
-		//TODO: In側映像がない場合（ClipIn点=0）OutTrimにふる
-		m_fSingleInTrim = TRUE;
+		ASSERT(m_pOperatingClipData);
+		ASSERT(m_pSelectedTrackInfo);
+		if ((m_pOperatingClipData->GetInPoint() != 0) && (m_pOperatingClipData->GetTimelineInPoint() != 0) &&
+			(IsClipAtIn(*m_pSelectedTrackInfo, m_pOperatingClipData->GetTimelineInPoint()) == nullptr))
+		{
+			m_fSingleInTrim = TRUE;
+		}
+		else
+		{
+			m_fSingleOutTrim = TRUE;
+		}
 	}
 	else
 	{
@@ -1479,7 +1965,7 @@ BOOL TimelineDataOperator::CheckMove(CPoint& point)
 		// 仮置きした場所でクリップと衝突しないかを再判定
 		iMovingClipInFrame = m_pOperatingClipData->GetTimelineInPoint() + iWorkOperatingClipFrameCount;
 		iMovingClipOutFrame = m_pOperatingClipData->GetTimelineOutPoint() + iWorkOperatingClipFrameCount;
-		pClipData = m_pOperateToTrackInfo->CheckMove(m_pOperatingClipData, iMovingClipInFrame, iMovingClipOutFrame);
+		pClipData = m_pOperateToTrackInfo->CheckPlaceInRange(m_pOperatingClipData, iMovingClipInFrame, iMovingClipOutFrame);
 		if ((pClipData != nullptr) && (pClipData != m_pOperatingClipData))
 		{
 			// 重なりがあった場合
@@ -1502,7 +1988,7 @@ BOOL TimelineDataOperator::CheckMove(CPoint& point)
 	// 重なりチェック
 	iMovingClipInFrame = m_pOperatingClipData->GetTimelineInPoint() + m_iOperatingClipFrameCount;
 	iMovingClipOutFrame = m_pOperatingClipData->GetTimelineOutPoint() + m_iOperatingClipFrameCount;
-	pClipData = m_pOperateToTrackInfo->CheckMove(m_pOperatingClipData, iMovingClipInFrame, iMovingClipOutFrame);
+	pClipData = m_pOperateToTrackInfo->CheckPlaceInRange(m_pOperatingClipData, iMovingClipInFrame, iMovingClipOutFrame);
 	if ((pClipData != nullptr) && (pClipData != m_pOperatingClipData))
 	{
 		// 重なりがあった場合
@@ -1531,7 +2017,7 @@ BOOL TimelineDataOperator::CheckMove(CPoint& point)
 			// 仮置きした場所でクリップと衝突しないかを再判定
 			iMovingClipInFrame = m_pOperatingClipData->GetTimelineInPoint() + iWorkOperatingClipFrameCount;
 			iMovingClipOutFrame = m_pOperatingClipData->GetTimelineOutPoint() + iWorkOperatingClipFrameCount;
-			pClipData = m_pOperateToTrackInfo->CheckMove(m_pOperatingClipData, iMovingClipInFrame, iMovingClipOutFrame);
+			pClipData = m_pOperateToTrackInfo->CheckPlaceInRange(m_pOperatingClipData, iMovingClipInFrame, iMovingClipOutFrame);
 			if ((pClipData != nullptr) && (pClipData != m_pOperatingClipData))
 			{
 				// 重なりがあった場合
@@ -1587,6 +2073,7 @@ BOOL TimelineDataOperator::DeleteClip(void)
 	ASSERT(m_pSelectedTrackInfo);
 	if ((m_pOperatingClipData != nullptr) && (m_pSelectedTrackInfo != nullptr))
 	{
+		// トランジション情報を削除してペアのクリップを調整する
 		if (m_pOperatingClipData->GetInTransition())
 		{
 			// トランジションのペアを解除
@@ -1598,12 +2085,26 @@ BOOL TimelineDataOperator::DeleteClip(void)
 			}
 			TransitionData* pTransitionData = m_pTransitionManager->GetTransitionData(static_cast<CString>(pClipInfo->GetOutTransitionUUID()));
 			int iLength = pTransitionData->GetTransitionDuration();
+			m_pTransitionManager->DeleteTransitionData(static_cast<CString>(pClipInfo->GetOutTransitionUUID()));
 			pClipInfo->ResetTransition(FALSE, iLength);
+			m_pTransitionManager->DeleteTransitionData(static_cast<CString>(m_pOperatingClipData->GetInTransitionUUID()));
 		}
 		if (m_pOperatingClipData->GetOutTransition())
 		{
 			// トランジションのペアを解除
-
+			ClipDataInfo* pClipInfo = m_pOperatingClipData->GetOutTransitionClipInfo();
+			ASSERT(pClipInfo);
+			if (!pClipInfo)
+			{
+				return FALSE;
+			}
+			TransitionData* pTransitionData = m_pTransitionManager->GetTransitionData(static_cast<CString>(pClipInfo->GetInTransitionUUID()));
+			int iLength = pTransitionData->GetTransitionDuration();
+			m_pTransitionManager->DeleteTransitionData(static_cast<CString>(pClipInfo->GetInTransitionUUID()));
+			m_pSelectedTrackInfo->DeleteClip(pClipInfo->GetTimelineInPoint());
+			pClipInfo->ResetTransition(TRUE, iLength);
+			m_pTransitionManager->DeleteTransitionData(static_cast<CString>(m_pOperatingClipData->GetOutTransitionUUID()));
+			m_pSelectedTrackInfo->AddClip(pClipInfo->GetTimelineInPoint(), pClipInfo->GetClipDataRect(), pClipInfo);
 		}
 		m_pSelectedTrackInfo->DeleteClip(m_pOperatingClipData->GetTimelineInPoint());
 		m_pSelectedTrack = nullptr;
@@ -1613,35 +2114,6 @@ BOOL TimelineDataOperator::DeleteClip(void)
 	}
 	return FALSE;
 }
-
-
-// 入力されたクリップのIn側にトランジションが設定されているかを判定する
-ClipDataRect* TimelineDataOperator::IsTransitionSetInSide(TrackDataInfo& cTrackInfo, ClipDataRect& cClipRect)
-{
-	if (!(cClipRect.GetInTransition()))
-	{
-		return nullptr;
-	}
-	ClipDataPositionMap mpClipMap;
-	int iCount = cTrackInfo.GetClipDataAtFrame(cClipRect.GetTimelineInPoint() - 1, mpClipMap);
-	if (iCount == 1)
-	{
-		ClipDataPositionMap::iterator itr = mpClipMap.begin();
-		ClipDataRect* pClipData = (*itr).second;
-		mpClipMap.clear();
-		return pClipData;
-	}
-	mpClipMap.clear();
-	return nullptr;
-}
-
-ClipDataRect* TimelineDataOperator::IsTransitionSetOutSide(ClipDataRect& cClipRect)
-{
-
-
-	return nullptr;
-}
-
 
 // 入力の文字列と先頭一致するメニュー上の位置を取得する
 CMenu* TimelineDataOperator::FindSubMenuFromString(CMenu* pMenu, LPCTSTR pszSearchString, int& iPos)

@@ -27,9 +27,9 @@ BOOL TransitionData::InitializeInTransition(CString& strTransitionDataUUID)
 	if (InitializeData(TRANSITIONDATAIN))
 	{
 		strTransitionDataUUID = m_strUUID;
+		m_eTransitionType = DISSOLVE;
 		return TRUE;
 	}
-	m_eTransitionType = DISSOLVE;
 	return FALSE;
 }
 
@@ -38,9 +38,9 @@ BOOL TransitionData::InitializeOutTransition(CString& strTransitionDataUUID)
 	if (InitializeData(TRANSITIONDATAOUT))
 	{
 		strTransitionDataUUID = m_strUUID;
+		m_eTransitionType = DISSOLVE;
 		return TRUE;
 	}
-	m_eTransitionType = DISSOLVE;
 	return FALSE;
 }
 

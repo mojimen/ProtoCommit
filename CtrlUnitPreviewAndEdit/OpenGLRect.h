@@ -64,14 +64,17 @@ public:
 		const float fR2, const float fG2, const float fB2, const float fA2,
 		const float fR3, const float fG3, const float fB3, const float fA3,
 		const float fR4, const float fG4, const float fB4, const float fA4);
+	void SetColor(const float fR1, const float fG1, const float fB1, const float fA1);
 	void SetBorderColor(const float fR1, const float fG1, const float fB1, const float fA1,
 		const float fR2, const float fG2, const float fB2, const float fA2,
 		const float fR3, const float fG3, const float fB3, const float fA3,
 		const float fR4, const float fG4, const float fB4, const float fA4);
+	void SetBorderColor(const float fR1, const float fG1, const float fB1, const float fA1);
 	void SetBothColor(const float fR1, const float fG1, const float fB1, const float fA1,
 		const float fR2, const float fG2, const float fB2, const float fA2,
 		const float fR3, const float fG3, const float fB3, const float fA3,
 		const float fR4, const float fG4, const float fB4, const float fA4);
+	void SetBothColor(const float fR1, const float fG1, const float fB1, const float fA1);
 
 	void DrawMyFillRect(void);
 	void DrawMyBorderRect(const float& fLineWidth = 1.0f);

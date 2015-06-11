@@ -12,7 +12,17 @@
 #include "TrackDataInfo.h"
 #include "TrackDataManager.h"
 
+#include "TimelineEditorDialog.h"
+
+#include "TimecodeOperator.h"
+
+
 #include <map>
+#include <windows.h>
+#include <mmsystem.h>
+#include <random>
+#include <thread>
+#pragma comment(lib,"winmm.lib")
 
 // TimelineEditorView
 
@@ -21,6 +31,11 @@ IMPLEMENT_DYNCREATE(TimelineEditorView, OpenGLView)
 TimelineEditorView::TimelineEditorView()
 {
 	m_fInitialize = FALSE;
+	m_pMainWnd = nullptr;
+	m_pParentDialog = nullptr;
+	m_pDebugInfoPanelRect = nullptr;
+	m_pTimelineDataOperator = nullptr;
+	m_pTimecodeOperator = nullptr;
 }
 
 TimelineEditorView::~TimelineEditorView()
@@ -28,7 +43,6 @@ TimelineEditorView::~TimelineEditorView()
 }
 
 BEGIN_MESSAGE_MAP(TimelineEditorView, OpenGLView)
-	ON_WM_PAINT()
 	ON_WM_LBUTTONDOWN()
 	ON_WM_LBUTTONUP()
 	ON_WM_MOUSEMOVE()
@@ -40,6 +54,16 @@ BEGIN_MESSAGE_MAP(TimelineEditorView, OpenGLView)
 	ON_WM_CONTEXTMENU()
 	ON_COMMAND(ID_CLIP_DELETE, &TimelineEditorView::OnClipDelete)
 	ON_COMMAND(ID_TRANSITION_SET_IN, &TimelineEditorView::OnTransitionSetIn)
+	ON_COMMAND(ID_TRANSITION_SET_OUT, &TimelineEditorView::OnTransitionSetOut)
+	//ON_COMMAND(ID_PLAY, &TimelineEditorView::OnPlay)
+	ON_COMMAND(ID_TRANSITION_RESET_IN_CENTER, &TimelineEditorView::OnTransitionResetInCenter)
+	ON_COMMAND(ID_TRANSITION_RESET_IN_START, &TimelineEditorView::OnTransitionResetInStart)
+	ON_COMMAND(ID_TRANSITION_RESET_IN_END, &TimelineEditorView::OnTransitionResetInEnd)
+	ON_COMMAND(ID_TRANSITION_RESET_OUT_CENTER, &TimelineEditorView::OnTransitionResetOutCenter)
+	ON_COMMAND(ID_TRANSITION_RESET_OUT_START, &TimelineEditorView::OnTransitionResetOutStart)
+	ON_COMMAND(ID_TRANSITION_RESET_OUT_END, &TimelineEditorView::OnTransitionResetOutEnd)
+	ON_WM_MOUSEWHEEL()
+	ON_WM_KEYUP()
 END_MESSAGE_MAP()
 
 // TimelineEditorView 描画
@@ -48,6 +72,31 @@ void TimelineEditorView::OnDraw(CDC* pDC)
 {
 	CDocument* pDoc = GetDocument();
 	// TODO: 描画コードをここに追加してください。
+
+	//DWORD dwTimeS = timeGetTime();
+	//CString strTime;
+	//strTime.Format(_T("TL%d\n"), dwTimeS);
+	//OutputDebugString(strTime);
+
+	wglMakeCurrent(m_pDC->GetSafeHdc(), m_hRC);
+
+	// 背景塗りつぶし
+	glClearColor(TIMELINEBASECOLOR_BRUSH_FLOAT);
+	glClear(GL_COLOR_BUFFER_BIT);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+	DrawTimelineEditorView(*pDC);
+
+	glFlush();
+	SwapBuffers(m_pDC->GetSafeHdc());
+
+	wglMakeCurrent(NULL, NULL);
+
+	//DWORD dwTimeE = timeGetTime();
+	//strTime.Format(_T("TL%d\n"), (dwTimeE - dwTimeS));
+	//OutputDebugString(strTime);
+
+
 }
 
 
@@ -101,30 +150,6 @@ int TimelineEditorView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 // TimelineEditorView メッセージ ハンドラー
 
-// 画面描画
-void TimelineEditorView::OnPaint()
-{
-	CPaintDC dc(this); // device context for painting
-	// TODO: ここにメッセージ ハンドラー コードを追加します。
-	// 描画メッセージで OpenGLView::OnPaint() を呼び出さないでください。
-
-	wglMakeCurrent(m_pDC->GetSafeHdc(), m_hRC);
-
-	// 背景塗りつぶし
-	glClearColor(TIMELINEBASECOLOR_BRUSH_FLOAT);
-	glClear(GL_COLOR_BUFFER_BIT);
-	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-	DrawTimelineEditorView(dc);
-
-	glFlush();
-	SwapBuffers(m_pDC->GetSafeHdc());
-
-	wglMakeCurrent(NULL, NULL);
-
-	DeleteDC(dc);
-}
-
 // Ｌボタンダウン
 void TimelineEditorView::OnLButtonDown(UINT nFlags, CPoint point)
 {
@@ -151,6 +176,8 @@ void TimelineEditorView::OnLButtonUp(UINT nFlags, CPoint point)
 	if (fRet)
 	{
 		Invalidate();
+		m_pParentDialog->SetTimelineCursorFrame(m_pTimelineDataOperator->GetOperatingTimelineCursorFramePosition());
+		//m_pMainWnd->PostMessageW(WM_COMMAND, MAKEWPARAM(ID_CHANGE_TIMELINECURSOR, 0), NULL);
 	}
 	ReleaseCapture();
 }
@@ -177,6 +204,9 @@ void TimelineEditorView::OnMouseMove(UINT nFlags, CPoint point)
 	if (m_pTimelineDataOperator->OnMouseMove(nFlags, point))
 	{
 		Invalidate();
+		UpdateWindow();
+		m_pParentDialog->SetTimelineCursorFrame(m_pTimelineDataOperator->GetOperatingTimelineCursorFramePosition());
+		//m_pMainWnd->PostMessageW(WM_COMMAND, MAKEWPARAM(ID_CHANGE_TIMELINECURSOR, 0), NULL);
 	}
 	m_pOperatingClipData = m_pTimelineDataOperator->GetOperatingClipData();
 }
@@ -212,6 +242,9 @@ void TimelineEditorView::OnInitialUpdate()
 	m_pTrackDataAudioManager = m_pTimelineDataManager->GetTrackDataManager(TRACKDATAMANAGER_AUDIO, m_uiTrackDataAudioManager);
 	ASSERT(m_pTrackDataAudioManager);
 
+	m_pTimecodeOperator = new TimecodeOperator();
+	m_pTimecodeOperator->InitializeTimecodeOperator(m_strTimecodeOperator);
+
 	InitAreaRect();
 	m_pDebugInfoPanelRect->bottom = m_pDebugInfoPanelRect->top + kDebugInfoPanelDefaltHeight;
 
@@ -226,11 +259,19 @@ void TimelineEditorView::OnDestroy()
 
 	// TODO: ここにメッセージ ハンドラー コードを追加します。
 
-	m_pTimelineDataOperator->DeleteTimelineDataOperator();
-	delete m_pTimelineDataOperator;
-
-	delete m_pDebugInfoPanelRect;
-
+	if (m_pTimelineDataOperator)
+	{
+		m_pTimelineDataOperator->DeleteTimelineDataOperator();
+		delete m_pTimelineDataOperator;
+	}
+	if (m_pTimecodeOperator)
+	{
+		delete m_pTimecodeOperator;
+	}
+	if (m_pDebugInfoPanelRect)
+	{
+		delete m_pDebugInfoPanelRect;
+	}
 }
 
 // ファイルドロップ
@@ -293,6 +334,22 @@ DROPEFFECT TimelineEditorView::OnDragOver(COleDataObject* pDataObject, DWORD dwK
 //	return OpenGLView::OnDrop(pDataObject, dropEffect, point);
 //}
 
+// マウスホイール
+BOOL TimelineEditorView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
+{
+	// TODO: ここにメッセージ ハンドラー コードを追加するか、既定の処理を呼び出します。
+
+	CPoint poPoint = pt;
+	ScreenToClient(&poPoint);
+	if (m_pTimelineDataOperator->OnMouseWheel(nFlags, zDelta, poPoint))
+	{
+		Invalidate();
+	}
+
+	return TRUE;
+}
+
+
 
 /*
 
@@ -300,7 +357,7 @@ DROPEFFECT TimelineEditorView::OnDragOver(COleDataObject* pDataObject, DWORD dwK
 
 */
 //画面描画
-void TimelineEditorView::DrawTimelineEditorView(CPaintDC& dcPaintDC)
+void TimelineEditorView::DrawTimelineEditorView(const CDC& dcDC)
 {
 	CRect rcRect;
 	GetClientRect(&rcRect);
@@ -314,21 +371,21 @@ void TimelineEditorView::DrawTimelineEditorView(CPaintDC& dcPaintDC)
 	DrawTimelineControlPanel();
 	
 	// シークバーエリア描画
-	DrawSeekBar(dcPaintDC, iHeight);
+	DrawSeekBar(dcDC, iHeight);
 	
 	// 静止クリップ描画
-	DrawClip(dcPaintDC, iHeight);
+	DrawClip(dcDC, iHeight);
 	
 	// 操作イメージ描画
 	if ((m_pTimelineDataOperator->IsSingleInTrim() || m_pTimelineDataOperator->IsSingleOutTrim() || m_pTimelineDataOperator->IsMove())
 		&& (!(m_pOperatingClipData->GetOperatingRect()->IsRectEmpty())))
 	{
-		DrawOperatingClip(dcPaintDC, iHeight);
+		DrawOperatingClip(dcDC, iHeight);
 	}
 
 	if (m_pTimelineDataOperator->IsDragAndDrop())
 	{
-		DrawDragAndDropClip(dcPaintDC, iHeight);
+		DrawDragAndDropClip(dcDC, iHeight);
 	}
 
 
@@ -339,10 +396,10 @@ void TimelineEditorView::DrawTimelineEditorView(CPaintDC& dcPaintDC)
 	DrawTimelineDataRect();
 
 	// トラック枠描画
-	DrawTrack(dcPaintDC, iHeight);
+	DrawTrack(dcDC, iHeight);
 
 	// タイムラインカーソル／シャトル操作補助線描画
-	DrawTimelineCursor(dcPaintDC, iHeight);
+	DrawTimelineCursor(dcDC, iHeight);
 
 #ifdef _DEBUG
 	CString strFrameNumber;
@@ -352,32 +409,32 @@ void TimelineEditorView::DrawTimelineEditorView(CPaintDC& dcPaintDC)
 
 	strFrameNumber.Format(_T("TLCursor %d"), m_pTimelineDataOperator->GetTimelineCursorFramePosition());
 	ChangeScreenPointToOpenGLPoint(5, 15, iHeight, dPointX, dPointY);
-	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 
 	strFrameNumber.Format(_T("Frame Left %d Right %d"), m_pTimelineDataOperator->GetLeftFrameNumber(), m_pTimelineDataOperator->GetRightFrameNumber());
 	ChangeScreenPointToOpenGLPoint(5, 30, iHeight, dPointX, dPointY);
-	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 
 	strFrameNumber.Format(_T("Operating TLCursor %d"), m_pTimelineDataOperator->GetOperatingTimelineCursorFramePosition());
 	ChangeScreenPointToOpenGLPoint(5, 45, iHeight, dPointX, dPointY);
-	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 
 	strFrameNumber.Format(_T("Operating Left %d Right %d"), m_pTimelineDataOperator->GetOperatingLeftFrameNumber(), m_pTimelineDataOperator->GetOperatingRightFrameNumber());
 	ChangeScreenPointToOpenGLPoint(5, 60, iHeight, dPointX, dPointY);
-	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 
 	strFrameNumber.Format(_T("CursorLine Point %d"), m_iTimelineCursorPoint);
 	ChangeScreenPointToOpenGLPoint(5, 75, iHeight, dPointX, dPointY);
-	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 
 	strFrameNumber.Format(_T("f/p %d p/f %d"), m_pTimelineDataOperator->GetFramePerPoint(), m_pTimelineDataOperator->GetPointPerFrame());
 	ChangeScreenPointToOpenGLPoint(5, 90, iHeight, dPointX, dPointY);
-	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 
 	DeleteObject(hfDrawFont);
@@ -392,7 +449,7 @@ void TimelineEditorView::DrawTimelineControlPanel(void)
 }
 
 // シークバー描画
-void TimelineEditorView::DrawSeekBar(const CDC& dcPaintDC, const int& iHeight)
+void TimelineEditorView::DrawSeekBar(const CDC& dcDC, const int& iHeight)
 {
 
 	// 背景塗りつぶし
@@ -423,17 +480,17 @@ void TimelineEditorView::DrawSeekBar(const CDC& dcPaintDC, const int& iHeight)
 			// 大目盛り
 			if ((iDrawFrame % m_pTimelineDataOperator->GetBigScaleDrawInterval()) == 0)
 			{
-				DrawBigScale(dcPaintDC, iDrawFrame, iHeight, pScaleLine);
+				DrawBigScale(dcDC, iDrawFrame, iHeight, pScaleLine);
 			}
 			// 中目盛り
 			else if ((iDrawFrame % m_pTimelineDataOperator->GetMiddleScaleDrawInterval()) == 0)
 			{
-				DrawMiddleScale(dcPaintDC, iDrawFrame, iHeight, pScaleLine);
+				DrawMiddleScale(dcDC, iDrawFrame, iHeight, pScaleLine);
 			}
 			// 小目盛り
 			else
 			{
-				DrawSmallScale(dcPaintDC, iDrawFrame, iHeight, pScaleLine);
+				DrawSmallScale(dcDC, iDrawFrame, iHeight, pScaleLine);
 			}
 		}
 		iDrawFrame += m_pTimelineDataOperator->GetSmallScaleDrawInterval();
@@ -443,18 +500,18 @@ void TimelineEditorView::DrawSeekBar(const CDC& dcPaintDC, const int& iHeight)
 }
 
 // 大目盛り描画
-void TimelineEditorView::DrawBigScale(const CDC& dcPaintDC, const int& iDrawFrame, const int& iHeight, POINT& pScaleLine)
+void TimelineEditorView::DrawBigScale(const CDC& dcDC, const int& iDrawFrame, const int& iHeight, POINT& pScaleLine)
 {
 
 	// TODO: 製品はタイムコードを表示
 	CString strFrameNumber;
 	double dPointX, dPointY;
 	HFONT hfDrawFont;
-	strFrameNumber.Format(_T("%d"), iDrawFrame);
+	m_pTimecodeOperator->ChangeFrameToTimecode(iDrawFrame, strFrameNumber, DF_MODE);
 	CreateDrawFont(SEEKBARTIMECODE_FONTSIZE, 0, DEFAULT_FONTFACE, hfDrawFont);
 	ChangeScreenPointToOpenGLPoint(pScaleLine.x + SEEKBARTIMECODE_MARGINX, m_pSeekBarRect->top + SEEKBARTIMECODE_MARGINY,
 		iHeight, dPointX, dPointY);
-	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dcPaintDC.GetSafeHdc(), hfDrawFont, SEEKBARTIMECODETEXTCOLOR_BRUSH_FLOAT,
+	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dcDC.GetSafeHdc(), hfDrawFont, SEEKBARTIMECODETEXTCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 
 	// 目盛り、ライン描画
@@ -468,7 +525,7 @@ void TimelineEditorView::DrawBigScale(const CDC& dcPaintDC, const int& iDrawFram
 }
 
 // 中目盛り描画
-void TimelineEditorView::DrawMiddleScale(const CDC& dcPaintDC, const int& iDrawFrame, const int& iHeight, POINT& pScaleLine)
+void TimelineEditorView::DrawMiddleScale(const CDC& dcDC, const int& iDrawFrame, const int& iHeight, POINT& pScaleLine)
 {
 
 #ifdef SEEKBAR_MIDDLESCALELINE_DRAW
@@ -479,7 +536,7 @@ void TimelineEditorView::DrawMiddleScale(const CDC& dcPaintDC, const int& iDrawF
 	CreateDrawFont(SEEKBARTIMECODE_MIDDLE_FONTSIZE, 0, DEFAULT_FONTFACE, hfDrawFont);
 	ChangeScreenPointToOpenGLPoint(pScaleLine.x + SEEKBARTIMECODE_MARGINX, m_pSeekBarRect->top + SEEKBARTIMECODE_MIDDLE_MARGINY,
 		iHeight, dPointX, dPointY);
-	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dcPaintDC.GetSafeHdc(), hfDrawFont, SEEKBARTIMECODETEXTCOLOR_BRUSH_FLOAT,
+	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), dcDC.GetSafeHdc(), hfDrawFont, SEEKBARTIMECODETEXTCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 	DeleteObject(hfDrawFont);
 #endif
@@ -497,7 +554,7 @@ void TimelineEditorView::DrawMiddleScale(const CDC& dcPaintDC, const int& iDrawF
 }
 
 // 小目盛り描画
-void TimelineEditorView::DrawSmallScale(const CDC& dcPaintDC, const int& iDrawFrame, const int& iHeight, POINT& pScaleLine)
+void TimelineEditorView::DrawSmallScale(const CDC& dcDC, const int& iDrawFrame, const int& iHeight, POINT& pScaleLine)
 {
 	// 目盛り、ライン描画
 	DrawLine(iHeight, pScaleLine.x, m_pSeekBarRect->top + SEEKBARSMALLSCALE_TOPMARGIN, pScaleLine.x, m_pSeekBarRect->bottom,
@@ -519,7 +576,7 @@ void TimelineEditorView::DrawTrackHeader(void)
 }
 
 // トラック描画
-void TimelineEditorView::DrawTrack(const CPaintDC& dcPaintDC, const int& iHeight)
+void TimelineEditorView::DrawTrack(const CDC& dcDC, const int& iHeight)
 {
 	// TODO: とりあえず今は枠と名前だけ
 	TrackDataRectList* pTrackDataRectList = m_pTrackDataVideoManager->GetTrackDataRectList();
@@ -532,7 +589,7 @@ void TimelineEditorView::DrawTrack(const CPaintDC& dcPaintDC, const int& iHeight
 		pTrackDataRect = m_pTrackDataVideoManager->GetTrackDataRect(pTrackDataRectList->at(i));
 		pTrackDataRect->DrawMyBottomLine();
 		ChangeScreenPointToOpenGLPoint(pTrackDataRect->left + TRACK_NAME_MARGINLEFT, (pTrackDataRect->top + TRACK_NAME_MARGINTOP), iHeight, dPointX, dPointY);
-		DrawTextOnGL(static_cast<PCTSTR>(pTrackDataRect->GetTrackName()), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+		DrawTextOnGL(static_cast<PCTSTR>(pTrackDataRect->GetTrackName()), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 			static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 
 	}
@@ -547,20 +604,20 @@ void TimelineEditorView::DrawTimelineDataRect(void)
 }
 
 // クリップの描画を行う
-BOOL TimelineEditorView::DrawClip(const CPaintDC& dcPaintDC, const int& iHeight)
+BOOL TimelineEditorView::DrawClip(const CDC& dcDC, const int& iHeight)
 {
 	int iClipCount = 0;
 	TrackDataRectList* pTrackDataRectList = m_pTrackDataVideoManager->GetTrackDataRectList();
 	for (int i = 0; i < m_pTrackDataVideoManager->GetTrackCount(); ++i)
 	{
-		iClipCount = DrawClipInTrack(dcPaintDC,  m_pTrackDataVideoManager->GetTrackDataRect(pTrackDataRectList->at(i)), iHeight, iClipCount);
+		iClipCount = DrawClipInTrack(dcDC,  m_pTrackDataVideoManager->GetTrackDataRect(pTrackDataRectList->at(i)), iHeight, iClipCount);
 
 	}
 	return TRUE;
 }
 
 // トラック内の表示範囲内クリップをサーチして描画
-int TimelineEditorView::DrawClipInTrack(const CPaintDC& dcPaintDC, TrackDataRect* pTrackDataRect, const int& iHeight, int iClipTotalCount)
+int TimelineEditorView::DrawClipInTrack(const CDC& dcDC, TrackDataRect* pTrackDataRect, const int& iHeight, int iClipTotalCount)
 {
 	//TODO: 毎回全サーチするのではなくてvectorとかに表示範囲のオブジェクトを設定しておいて操作のたびにvectorを更新する
 	int iStartFrame = m_pTimelineDataOperator->GetOperatingLeftFrameNumber();
@@ -614,7 +671,7 @@ int TimelineEditorView::DrawClipInTrack(const CPaintDC& dcPaintDC, TrackDataRect
 #ifdef _DEBUG
 			strFrameNumber.Format(_T(" L:%d T:%d R:%d B:%d I:%d O:%d D:%d i:%d o:%d"), pClipData->left, pClipData->top, pClipData->right, pClipData->bottom, pClipData->GetTimelineInPoint(), pClipData->GetTimelineOutPoint(), pClipData->GetDuration(), pClipData->GetInPoint(), pClipData->GetOutPoint());
 			ChangeScreenPointToOpenGLPoint(5, 105 + (iClipTotalCount * 15), iHeight, dPointX, dPointY);
-			DrawTextOnGL(static_cast<PCTSTR>(pTrackDataRect->GetTrackName() + strFrameNumber), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+			DrawTextOnGL(static_cast<PCTSTR>(pTrackDataRect->GetTrackName() + strFrameNumber), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 				static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 #endif
 			++iClipTotalCount;
@@ -628,7 +685,7 @@ int TimelineEditorView::DrawClipInTrack(const CPaintDC& dcPaintDC, TrackDataRect
 }
 
 // 操作中クリップの描画を行う
-BOOL TimelineEditorView::DrawOperatingClip(const CDC& dcPaintDC, const int& iHeight)
+BOOL TimelineEditorView::DrawOperatingClip(const CDC& dcDC, const int& iHeight)
 {
 	// TODO: 元のクリップの色を変える　元々各タイミングで実施するよう変更
 	m_pOperatingClipData->DrawOperatingOldRect(iHeight);
@@ -657,11 +714,11 @@ BOOL TimelineEditorView::DrawOperatingClip(const CDC& dcPaintDC, const int& iHei
 		CreateDrawFont(13, 0, DEFAULT_FONTFACE, hfDrawFont);
 		strText.Format(_T("TrimingClipInPoint  %d"), iPoint);
 		ChangeScreenPointToOpenGLPoint(700, 15, iHeight, dPointX, dPointY);
-		DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+		DrawTextOnGL(static_cast<PCTSTR>(strText), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 			static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 		strText.Format(_T("TrimingClipLeftPoint  %d"), rcOperatingRect->left);
 		ChangeScreenPointToOpenGLPoint(700, 30, iHeight, dPointX, dPointY);
-		DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+		DrawTextOnGL(static_cast<PCTSTR>(strText), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 			static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 		if (m_pTimelineDataOperator->IsSingleInTrim())
 		{
@@ -675,15 +732,15 @@ BOOL TimelineEditorView::DrawOperatingClip(const CDC& dcPaintDC, const int& iHei
 		}
 		strText.Format(_T("TrimingClipOutPoint  %d"), iPoint);
 		ChangeScreenPointToOpenGLPoint(700, 45, iHeight, dPointX, dPointY);
-		DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+		DrawTextOnGL(static_cast<PCTSTR>(strText), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 			static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 		strText.Format(_T("TrimingClipRightPoint  %d"), rcOperatingRect->right);
 		ChangeScreenPointToOpenGLPoint(700, 60, iHeight, dPointX, dPointY);
-		DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+		DrawTextOnGL(static_cast<PCTSTR>(strText), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 			static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 		strText.Format(_T("TrimingClipDuration  %d"), iDuration);
 		ChangeScreenPointToOpenGLPoint(700, 75, iHeight, dPointX, dPointY);
-		DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+		DrawTextOnGL(static_cast<PCTSTR>(strText), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 			static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 		DeleteObject(hfDrawFont);
 #endif
@@ -702,15 +759,15 @@ BOOL TimelineEditorView::DrawOperatingClip(const CDC& dcPaintDC, const int& iHei
 		CreateDrawFont(13, 0, DEFAULT_FONTFACE, hfDrawFont);
 		strText.Format(_T("MovingClipInPoint  %d"), m_pOperatingClipData->GetTimelineInPoint() + m_pTimelineDataOperator->GetOperatingClipFrameCount());
 		ChangeScreenPointToOpenGLPoint(700, 15, iHeight, dPointX, dPointY);
-		DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+		DrawTextOnGL(static_cast<PCTSTR>(strText), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 			static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 		strText.Format(_T("MovingClipLeftPoint  %d"), rcOperatingRect->left);
 		ChangeScreenPointToOpenGLPoint(700, 30, iHeight, dPointX, dPointY);
-		DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+		DrawTextOnGL(static_cast<PCTSTR>(strText), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 			static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 		strText.Format(_T("MovingClipRightPoint  %d"), rcOperatingRect->right);
 		ChangeScreenPointToOpenGLPoint(700, 45, iHeight, dPointX, dPointY);
-		DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+		DrawTextOnGL(static_cast<PCTSTR>(strText), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 			static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 #endif
 
@@ -725,11 +782,11 @@ BOOL TimelineEditorView::DrawOperatingClip(const CDC& dcPaintDC, const int& iHei
 #ifdef _DEBUG
 			strText.Format(_T("MouseMoveClipLeftPoint  %d"), rcMousePointRect.left);
 			ChangeScreenPointToOpenGLPoint(700, 60, iHeight, dPointX, dPointY);
-			DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+			DrawTextOnGL(static_cast<PCTSTR>(strText), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 				static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 			strText.Format(_T("MouseMoveClipRightPoint  %d"), rcMousePointRect.right);
 			ChangeScreenPointToOpenGLPoint(700, 75, iHeight, dPointX, dPointY);
-			DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+			DrawTextOnGL(static_cast<PCTSTR>(strText), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 				static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 			DeleteObject(hfDrawFont);
 #endif
@@ -739,7 +796,7 @@ BOOL TimelineEditorView::DrawOperatingClip(const CDC& dcPaintDC, const int& iHei
 }
 
 // ドラッグ＆ドロップ中のイメージを描画する
-BOOL TimelineEditorView::DrawDragAndDropClip(const CDC& dcPaintDC, const int& iHeight)
+BOOL TimelineEditorView::DrawDragAndDropClip(const CDC& dcDC, const int& iHeight)
 {
 	ClipDataRect* pClipRect = m_pTimelineDataOperator->GetDragAndDropClipDataRect();
 	if (m_pTimelineDataOperator->EnableDrawDragRect())
@@ -761,23 +818,23 @@ BOOL TimelineEditorView::DrawDragAndDropClip(const CDC& dcPaintDC, const int& iH
 	CreateDrawFont(13, 0, DEFAULT_FONTFACE, hfDrawFont);
 	strText.Format(_T("DropClipInPoint  %d"), pClipRect->GetTimelineInPoint());
 	ChangeScreenPointToOpenGLPoint(700, 15, iHeight, dPointX, dPointY);
-	DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+	DrawTextOnGL(static_cast<PCTSTR>(strText), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 	strText.Format(_T("DropClipLeftPoint  %d"), pClipRect->left);
 	ChangeScreenPointToOpenGLPoint(700, 30, iHeight, dPointX, dPointY);
-	DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+	DrawTextOnGL(static_cast<PCTSTR>(strText), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 	strText.Format(_T("DropClipOutPoint  %d"), pClipRect->GetTimelineOutPoint());
 	ChangeScreenPointToOpenGLPoint(700, 45, iHeight, dPointX, dPointY);
-	DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+	DrawTextOnGL(static_cast<PCTSTR>(strText), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 	strText.Format(_T("DropClipRightPoint  %d"), pClipRect->right);
 	ChangeScreenPointToOpenGLPoint(700, 60, iHeight, dPointX, dPointY);
-	DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+	DrawTextOnGL(static_cast<PCTSTR>(strText), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 	strText.Format(_T("DropClipDuration  %d"), pClipRect->GetDuration());
 	ChangeScreenPointToOpenGLPoint(700, 75, iHeight, dPointX, dPointY);
-	DrawTextOnGL(static_cast<PCTSTR>(strText), dcPaintDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
+	DrawTextOnGL(static_cast<PCTSTR>(strText), dcDC.GetSafeHdc(), hfDrawFont, BLACKCOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 	DeleteObject(hfDrawFont);
 #endif
@@ -786,7 +843,7 @@ BOOL TimelineEditorView::DrawDragAndDropClip(const CDC& dcPaintDC, const int& iH
 }
 
 // タイムラインカーソルの描画を行う
-BOOL TimelineEditorView::DrawTimelineCursor(const CDC& dcPaintDC, const int& iHeight)
+BOOL TimelineEditorView::DrawTimelineCursor(const CDC& dcDC, const int& iHeight)
 {
 	// ラインを描画
 	DrawLine(iHeight, m_iTimelineCursorPoint, m_pSeekBarRect->top, m_iTimelineCursorPoint, m_pTimelineDataRect->bottom,
@@ -869,14 +926,18 @@ void TimelineEditorView::SetPanelRect(void)
 	int iTimelineEditHeaderDefaltHeight = kTimelineEditHeaderDefaltHeight;
 	int iTimelineControlPanelDefaultWidth = kTimelineControlPanelDefaultWidth;
 
-	// プレビューエリア配置
+	// デバッグ情報表示エリア配置
+#ifdef _DEBUG
 	m_pDebugInfoPanelRect->CopyRect(rcViewRect);
 	m_pDebugInfoPanelRect->bottom = rcViewRect.top + lViewHeight;
 	m_pDebugInfoPanelRect->SetVert(rcViewRect.Height());
+#endif
 
 	// タイムライン編集エリア配置
 	m_pTimelineEditPanelRect->CopyRect(rcViewRect);
+#ifdef _DEBUG
 	m_pTimelineEditPanelRect->top = m_pDebugInfoPanelRect->bottom + kSplitterHeight;
+#endif
 	m_pTimelineEditPanelRect->SetVert(rcViewRect.Height());
 
 	// タイムラインヘッダーエリアの配置
@@ -1007,7 +1068,7 @@ void TimelineEditorView::CreateZoomMap(void)
 
 
 
-
+// コンテキストメニュー表示
 void TimelineEditorView::OnContextMenu(CWnd* pWnd, CPoint point)
 {
 	// TODO: ここにメッセージ ハンドラー コードを追加します。
@@ -1020,8 +1081,8 @@ void TimelineEditorView::OnContextMenu(CWnd* pWnd, CPoint point)
 	}
 }
 
-
-void TimelineEditorView::OnClipDelete()
+// クリップ削除
+void TimelineEditorView::OnClipDelete(void)
 {
 	// TODO: ここにコマンド ハンドラー コードを追加します。
 
@@ -1031,8 +1092,8 @@ void TimelineEditorView::OnClipDelete()
 	}
 }
 
-
-void TimelineEditorView::OnTransitionSetIn()
+// トランジション設定（In）
+void TimelineEditorView::OnTransitionSetIn(void)
 {
 	// TODO: ここにコマンド ハンドラー コードを追加します。
 
@@ -1041,4 +1102,126 @@ void TimelineEditorView::OnTransitionSetIn()
 	{
 		Invalidate();
 	}
+}
+
+// トランジション設定（Out）
+void TimelineEditorView::OnTransitionSetOut(void)
+{
+	// TODO: ここにコマンド ハンドラー コードを追加します。
+
+	CString strMessage;
+	if (m_pTimelineDataOperator->OnTransitionSetOut(static_cast<PCTSTR>(strMessage)))
+	{
+		Invalidate();
+	}
+}
+
+// トランジション解除（In・中間）
+void TimelineEditorView::OnTransitionResetInCenter(void)
+{
+	// TODO: ここにコマンド ハンドラー コードを追加します。
+	if (m_pTimelineDataOperator->OnTransitionResetInCenter())
+	{
+		Invalidate();
+	}
+}
+
+// トランジション解除（In・開始点）
+void TimelineEditorView::OnTransitionResetInStart(void)
+{
+	// TODO: ここにコマンド ハンドラー コードを追加します。
+	if (m_pTimelineDataOperator->OnTransitionResetInStart())
+	{
+		Invalidate();
+	}
+}
+
+// トランジション解除（In・終了点）
+void TimelineEditorView::OnTransitionResetInEnd(void)
+{
+	// TODO: ここにコマンド ハンドラー コードを追加します。
+	if (m_pTimelineDataOperator->OnTransitionResetInEnd())
+	{
+		Invalidate();
+	}
+}
+
+// トランジション解除（Out・中間）
+void TimelineEditorView::OnTransitionResetOutCenter(void)
+{
+	// TODO: ここにコマンド ハンドラー コードを追加します。
+	if (m_pTimelineDataOperator->OnTransitionResetOutCenter())
+	{
+		Invalidate();
+	}
+}
+
+// トランジション解除（Out・開始点）
+void TimelineEditorView::OnTransitionResetOutStart(void)
+{
+	// TODO: ここにコマンド ハンドラー コードを追加します。
+	if (m_pTimelineDataOperator->OnTransitionResetOutStart())
+	{
+		Invalidate();
+	}
+}
+
+// トランジション解除（Out・終了点）
+void TimelineEditorView::OnTransitionResetOutEnd(void)
+{
+	// TODO: ここにコマンド ハンドラー コードを追加します。
+	if (m_pTimelineDataOperator->OnTransitionResetOutEnd())
+	{
+		Invalidate();
+	}
+}
+
+// 再生中の画面描画
+void TimelineEditorView::OnPlay(int iSpeed)
+{
+	if (m_pTimelineDataOperator->OnPlay(iSpeed))
+	{
+		Invalidate();
+	}
+}
+
+// 再生の停止
+void TimelineEditorView::OnStop(void)
+{
+	m_pTimelineDataOperator->OnStop();
+}
+
+// タイムラインカーソル位置同期
+int TimelineEditorView::GetTimelineCursorFrame(void)
+{
+	return m_pTimelineDataOperator->GetOperatingTimelineCursorFramePosition();
+}
+
+
+// キー操作
+void TimelineEditorView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
+{
+	// TODO: ここにメッセージ ハンドラー コードを追加するか、既定の処理を呼び出します。
+
+	switch (nChar)
+	{
+
+	case VK_SPACE:
+	case VK_RETURN:
+		m_pParentDialog->ChangePlay();
+		break;
+
+	case VK_ESCAPE:
+		if (m_pTimelineDataOperator->IsPlaying())
+		{
+			m_pParentDialog->ChangePlay();
+		}
+		break;
+
+	default:
+		break;
+
+	}
+
+	OpenGLView::OnKeyUp(nChar, nRepCnt, nFlags);
 }

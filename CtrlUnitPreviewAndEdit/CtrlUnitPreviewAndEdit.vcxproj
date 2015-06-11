@@ -197,10 +197,12 @@
     <ClInclude Include="MainFrm.h" />
     <ClInclude Include="OpenGLRect.h" />
     <ClInclude Include="OpenGLView.h" />
+    <ClInclude Include="PlaybackController.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="SingleTrimOperator.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="TimecodeOperator.h" />
     <ClInclude Include="TimelineDataManager.h" />
     <ClInclude Include="TimelineDataOperator.h" />
     <ClInclude Include="TimelineEditorDialog.h" />
@@ -224,6 +226,7 @@
     <ClCompile Include="MainFrm.cpp" />
     <ClCompile Include="OpenGLRect.cpp" />
     <ClCompile Include="OpenGLView.cpp" />
+    <ClCompile Include="PlaybackController.cpp" />
     <ClCompile Include="SingleTrimOperator.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -231,6 +234,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="TimecodeOperator.cpp" />
     <ClCompile Include="TimelineDataManager.cpp" />
     <ClCompile Include="TimelineDataOperator.cpp" />
     <ClCompile Include="TimelineEditorDialog.cpp" />

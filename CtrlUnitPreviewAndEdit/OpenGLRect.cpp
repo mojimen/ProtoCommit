@@ -234,6 +234,13 @@ void OpenGLRect::SetColor(const float fR1, const float fG1, const float fB1, con
 	return;
 }
 
+void OpenGLRect::SetColor(const float fR1, const float fG1, const float fB1, const float fA1)
+{
+	SetColor(fR1, fG1, fB1, fA1, fR1, fG1, fB1, fA1, fR1, fG1, fB1, fA1,
+		fR1, fG1, fB1, fA1, m_fColor);
+	return;
+}
+
 void OpenGLRect::SetBorderColor(const float fR1, const float fG1, const float fB1, const float fA1,
 	const float fR2, const float fG2, const float fB2, const float fA2,
 	const float fR3, const float fG3, const float fB3, const float fA3,
@@ -244,6 +251,15 @@ void OpenGLRect::SetBorderColor(const float fR1, const float fG1, const float fB
 	return;
 }
 
+void OpenGLRect::SetBorderColor(const float fR1, const float fG1, const float fB1, const float fA1)
+{
+	SetColor(fR1, fG1, fB1, fA1, fR1, fG1, fB1, fA1, fR1, fG1, fB1, fA1,
+		fR1, fG1, fB1, fA1, m_fBorderColor);
+	return;
+}
+
+
+
 void OpenGLRect::SetBothColor(const float fR1, const float fG1, const float fB1, const float fA1,
 	const float fR2, const float fG2, const float fB2, const float fA2,
 	const float fR3, const float fG3, const float fB3, const float fA3,
@@ -251,6 +267,14 @@ void OpenGLRect::SetBothColor(const float fR1, const float fG1, const float fB1,
 {
 	SetColor(fR1, fG1, fB1, fA1, fR2, fG2, fB2, fA2, fR3, fG3, fB3, fA3,
 		fR4, fG4, fB4, fA4, m_fColor);
+	CopyColor(m_fColor, m_fBorderColor);
+	return;
+}
+
+void OpenGLRect::SetBothColor(const float fR1, const float fG1, const float fB1, const float fA1)
+{
+	SetColor(fR1, fG1, fB1, fA1, fR1, fG1, fB1, fA1, fR1, fG1, fB1, fA1, 
+		fR1, fG1, fB1, fA1, m_fColor);
 	CopyColor(m_fColor, m_fBorderColor);
 	return;
 }

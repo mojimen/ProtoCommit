@@ -16,6 +16,7 @@ private:
 	UUID m_uiInputChannel;
 	UUID m_uiOutputChannel;
 	ClipDataPositionMap m_mpClipDataRectMap;
+	ClipDataPositionInfoMap m_mpClipDataInfoMap;
 
 	// 再生時参照項目
 	BOOL m_fSolo;
@@ -32,15 +33,16 @@ public:
 	BOOL InitializeTrackId(UUID& uiClipId);
 
 
-	void AddClip(const int iInPoint, ClipDataRect* pClipData);
-	void DeleteClip(const int iInPoint);
-	void ChangeClip(const int iOldInPoint, const int iNewInPoint, ClipDataRect* pClipData);
+	BOOL AddClip(const int iInPoint, ClipDataRect* pClipRect = nullptr, ClipDataInfo* pClipInfo = nullptr);
+	void DeleteClip(const int iInPoint, BOOL fRect = TRUE );
+	void ChangeClip(const int iOldInPoint, const int iNewInPoint, ClipDataRect* pClipData = nullptr, ClipDataInfo* pClipInfo = nullptr, BOOL fRect = TRUE);
 	void SetTrackDataRect(const UUID& uiTrackRectId, TrackDataRect* pTrackDataRect) { m_pTrackDataRect = pTrackDataRect; m_uiTrackRectId = uiTrackRectId; }
 	void DeleteTrackDataInfo(void);
 
 	// Getter
 	ClipDataRect* GetClipDataRect(const int iFrame, int& iInPoint);
 	int GetClipDataAtFrame(const int iFrame, ClipDataPositionMap& mpClipMap);
+	int GetClipDataInfoAtFrame(const int iFrame, ClipDataPositionInfoMap& mpClipMap);
 	int GetClipDataInRange(const int iStartFrame, const int iEndFrame, ClipDataPositionMap& mpClipMap);
 	UUID GetTrackRectId(void) { return m_uiTrackRectId; }
 	TrackDataRect* GetTrackDataRect(void) { return m_pTrackDataRect; }
@@ -50,7 +52,7 @@ public:
 	// TODO: これはコントローラーに？
 	int CheckClipInSingleOutTrimRange(int iStartFrame, int iEndFrame);
 	int CheckClipInSingleInTrimRange(int iStartFrame, int iEndFrame);
-	ClipDataRect* CheckMove(ClipDataRect* pCheckClipData, const int iInPoint, const int iOutPoint);
+	ClipDataRect* CheckPlaceInRange(ClipDataRect* pCheckClipData, const int iInPoint, const int iOutPoint);
 
 };
 

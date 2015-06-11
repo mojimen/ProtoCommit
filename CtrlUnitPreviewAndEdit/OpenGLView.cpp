@@ -241,7 +241,7 @@ int OpenGLView::DrawTextOnGL(PCTSTR pszStr, HDC hDC, HFONT& hfFont, GLfloat gfRe
 
 	for (unsigned int textCnt = 0; textCnt < textLength; ++textCnt)
 	{
-		if (wglUseFontBitmapsW(hDC, unicodeText[textCnt], 1, listbaseIdx + textCnt) == FALSE)
+		if (wglUseFontBitmaps(hDC, unicodeText[textCnt], 1, listbaseIdx + textCnt) == FALSE)
 		{
 			//MessageBox(hwnd, "wglUseFontBitmaps() Error!!", "wgl Error", MB_OK);
 		}
@@ -283,7 +283,7 @@ BOOL OpenGLView::CreateDrawFont(int iHeight, int iAngle, PCTSTR pszFace, HFONT& 
 
 void OpenGLView::ChangeScreenPointToOpenGLPoint(const int iPointX, const int iPointY, int iWindowHeight, double& dPointX, double& dPointY)
 {
-	float z;
+	float z = 0.0f;
 	double objZ;
 	glReadPixels(iPointX, iWindowHeight - iPointY, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &z);
 	gluUnProject(iPointX, iWindowHeight - iPointY, z, m_dModelview, m_dProjection, m_iViewport, &dPointX, &dPointY, &objZ);

@@ -49,6 +49,7 @@ void TrackDataInfo::DeleteTrackDataInfo(void)
 		delete (*itr).second;
 	}
 	m_mpClipDataRectMap.clear();
+	m_mpClipDataInfoMap.clear();
 }
 
 // 入力のフレームに存在するクリップを取得する（１つのみ）
@@ -118,6 +119,46 @@ int TrackDataInfo::GetClipDataAtFrame(const int iFrame, ClipDataPositionMap& mpC
 	return iSize;
 }
 
+// 入力のフレームに存在するクリップを全て取得
+int TrackDataInfo::GetClipDataInfoAtFrame(const int iFrame, ClipDataPositionInfoMap& mpClipMap)
+{
+	ASSERT(iFrame >= 0);
+
+	int iSize = 0;
+	if (m_mpClipDataInfoMap.size() == 0)
+	{
+		return iSize;
+	}
+	ClipDataPositionInfoMap::iterator itr = m_mpClipDataInfoMap.upper_bound(iFrame);
+	if (itr == m_mpClipDataInfoMap.begin())
+	{
+		return 0;
+	}
+	else
+	{
+		ClipDataInfo* pClipData;
+		--itr;
+		pClipData = (*itr).second;
+		if (iFrame <= ((*itr).first + pClipData->GetDuration() - 1))
+		{
+			mpClipMap[(*itr).first] = pClipData;
+			++iSize;
+		}
+		--itr;
+		if (itr == m_mpClipDataInfoMap.begin())
+		{
+			pClipData = (*itr).second;
+			if (iFrame <= ((*itr).first + pClipData->GetDuration() - 1))
+			{
+				mpClipMap[(*itr).first] = pClipData;
+				++iSize;
+			}
+		}
+	}
+	return iSize;
+}
+
+
 // 入力のフレーム範囲に存在するクリップを取得
 int TrackDataInfo::GetClipDataInRange(const int iStartFrame, const int iEndFrame, ClipDataPositionMap& mpClipMap)
 {
@@ -139,6 +180,18 @@ int TrackDataInfo::GetClipDataInRange(const int iStartFrame, const int iEndFrame
 		{
 			mpClipMap[(*itr).first] = pClipData;
 			++iSize;
+		}
+		// トランジション設定ありの場合もうひとつクリップが重なっていることがある
+		if (itr != m_mpClipDataRectMap.begin())
+		{
+			--itr;
+			pClipData = (*itr).second;
+			if (iStartFrame <= ((*itr).first + pClipData->GetDuration() - 1))
+			{
+				mpClipMap[(*itr).first] = pClipData;
+				++iSize;
+			}
+			++itr;
 		}
 		++itr;
 	}
@@ -166,22 +219,58 @@ int TrackDataInfo::GetClipDataInRange(const int iStartFrame, const int iEndFrame
 
 
 // 入力のフレーム位置にクリップを追加する
-void TrackDataInfo::AddClip(const int iInPoint, ClipDataRect* pClipData)
+BOOL TrackDataInfo::AddClip(const int iInPoint, ClipDataRect* pClipRect /* = nullptr*/, ClipDataInfo* pClipInfo /* = nullptr*/)
 {
-	m_mpClipDataRectMap[iInPoint] = pClipData;
+	if (pClipRect != nullptr)
+	{
+		m_mpClipDataRectMap[iInPoint] = pClipRect;
+		if (pClipInfo != nullptr)
+		{
+			m_mpClipDataInfoMap[iInPoint] = pClipInfo;
+		}
+		else
+		{
+			ASSERT(pClipRect->GetClipDataInfo());
+			if (pClipRect->GetClipDataInfo())
+			{
+				m_mpClipDataInfoMap[iInPoint] = pClipRect->GetClipDataInfo();
+			}
+			else
+			{
+				return FALSE;
+			}
+		}
+	}
+	else
+	{
+		ASSERT(pClipInfo);
+		if (pClipInfo)
+		{
+			m_mpClipDataInfoMap[iInPoint] = pClipInfo;
+		}
+		else
+		{
+			return FALSE;
+		}
+	}
+	return TRUE;
 }
 
 // 入力のフレーム位置にIn点があるクリップを削除する
-void TrackDataInfo::DeleteClip(const int iInPoint)
+void TrackDataInfo::DeleteClip(const int iInPoint, BOOL fRect /* = TRUE*/)
 {
-	m_mpClipDataRectMap.erase(iInPoint);
+	if (fRect)
+	{
+		m_mpClipDataRectMap.erase(iInPoint);
+	}
+	m_mpClipDataInfoMap.erase(iInPoint);
 }
 
 // 入力のフレーム位置にIn点があるクリップを削除して新しい位置に指定したクリップを追加する。
-void TrackDataInfo::ChangeClip(const int iOldInPoint, const int iNewInPoint, ClipDataRect* pClipData)
+void TrackDataInfo::ChangeClip(const int iOldInPoint, const int iNewInPoint, ClipDataRect* pClipRect /* = nullptr*/, ClipDataInfo* pClipInfo /*= nullptr*/, BOOL fRect /*= TRUE*/)
 {
-	DeleteClip(iOldInPoint);
-	AddClip(iNewInPoint, pClipData);
+	DeleteClip(iOldInPoint, fRect);
+	AddClip(iNewInPoint, pClipRect, pClipInfo);
 }
 
 
@@ -225,9 +314,8 @@ int TrackDataInfo::CheckClipInSingleInTrimRange(int iStartFrame, int iEndFrame)
 	return iEndFrame;
 }
 
-
-
-ClipDataRect* TrackDataInfo::CheckMove(ClipDataRect* pCheckClipData, const int iInPoint, const int iOutPoint)
+// 指定の範囲内にクリップが存在するかをチェック
+ClipDataRect* TrackDataInfo::CheckPlaceInRange(ClipDataRect* pCheckClipData, const int iInPoint, const int iOutPoint)
 {
 	ClipDataRect* pClipData;
 	int iPoint;

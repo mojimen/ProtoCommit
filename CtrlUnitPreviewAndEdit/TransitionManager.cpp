@@ -95,6 +95,7 @@ BOOL TransitionManager::DeleteTransitionData(CString& strTransitionUUID)
 		return FALSE;
 	}
 	delete (*itr).second;
+	m_mpTransitionDataMap.erase(strTransitionUUID);
 	return TRUE;
 }
 

@@ -11,6 +11,9 @@ class TimelineDataManager;
 class TrackDataManager;
 class TrackDataRect;
 class ClipDataRect;
+class TimelineEditorDialog;
+
+class TimecodeOperator;
 
 typedef std::map<int, int> DisplayScaleMap;
 
@@ -38,7 +41,6 @@ public:
 protected:
 	DECLARE_MESSAGE_MAP()
 public:
-	afx_msg void OnPaint();
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
@@ -47,6 +49,7 @@ public:
 	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
 	virtual void OnInitialUpdate();
 	afx_msg void OnDropFiles(HDROP hDropInfo);
+	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
 
 private:
 	// ébíËå≈íËíl
@@ -71,6 +74,8 @@ private:
 	//const float kTimelineCursorDragSixtyFourSpeed = 0.5f;	// É^ÉCÉÄÉâÉCÉìÉJÅ[É\ÉãÉhÉâÉbÉOéûÇÃÅ~ÇUÇSî{à⁄ìÆîÕàÕ
 
 	BOOL m_fInitialize;
+	CWnd* m_pMainWnd;
+	TimelineEditorDialog* m_pParentDialog;
 
 	//ï\é¶èÓïÒ
 	OpenGLRect* m_pDebugInfoPanelRect;
@@ -104,21 +109,25 @@ private:
 	TrackDataManager* m_pTrackDataMasterManager;
 	UUID m_uiTrackDataMasterManager;
 
+	TimecodeOperator* m_pTimecodeOperator;
+	CString m_strTimecodeOperator;
+
+
 	// ï`âÊ
-	void DrawTimelineEditorView(CPaintDC& dcPaintDc);
+	void DrawTimelineEditorView(const CDC& dcDc);
 	void DrawTimelineControlPanel(void);
-	void DrawSeekBar(const CDC& dcPaintDC, const int& iHeight);
-	void DrawBigScale(const CDC& dcPaintDC, const int& iDrawFrame, const int& iHeight, POINT& pScaleLine);
-	void DrawMiddleScale(const CDC& dcPaintDC, const int& iDrawFrame, const int& iHeight, POINT& pScaleLine);
-	void DrawSmallScale(const CDC& dcPaintDC, const int& iDrawFrame, const int& iHeight, POINT& pScaleLine);
+	void DrawSeekBar(const CDC& dcDC, const int& iHeight);
+	void DrawBigScale(const CDC& dcDC, const int& iDrawFrame, const int& iHeight, POINT& pScaleLine);
+	void DrawMiddleScale(const CDC& dcDC, const int& iDrawFrame, const int& iHeight, POINT& pScaleLine);
+	void DrawSmallScale(const CDC& dcDC, const int& iDrawFrame, const int& iHeight, POINT& pScaleLine);
 	void DrawTrackHeader(void);
-	void DrawTrack(const CPaintDC& dcPaintDC, const int& iHeight);
-	BOOL DrawClip(const CPaintDC& dcPaintDC, const int& iHeight);
-	int DrawClipInTrack(const CPaintDC& dcPaintDC, TrackDataRect* pTrackDataRect, const int& iHeight, int iClipTotalCount = 0);
+	void DrawTrack(const CDC& dcDC, const int& iHeight);
+	BOOL DrawClip(const CDC& dcDC, const int& iHeight);
+	int DrawClipInTrack(const CDC& dcDC, TrackDataRect* pTrackDataRect, const int& iHeight, int iClipTotalCount = 0);
 	void DrawTimelineDataRect(void);
-	BOOL DrawOperatingClip(const CDC& dcPaintDC, const int& iHeight);
-	BOOL DrawDragAndDropClip(const CDC& dcPaintDC, const int& iHeight);
-	BOOL DrawTimelineCursor(const CDC& dcPaintDC, const int& iHeight);
+	BOOL DrawOperatingClip(const CDC& dcDC, const int& iHeight);
+	BOOL DrawDragAndDropClip(const CDC& dcDC, const int& iHeight);
+	BOOL DrawTimelineCursor(const CDC& dcDC, const int& iHeight);
 	//void DrawShuttleGuideLine(CDC& dcMemDc, CDC& dcMovingMemDc, BLENDFUNCTION& blAlphaBlend, CRect& rcShuttleLineRect, float fGuideAreaWidth);
 	//void DrawAnimation(const int iFrame);
 
@@ -134,10 +143,25 @@ private:
 
 public:
 	virtual DROPEFFECT OnDragEnter(COleDataObject* pDataObject, DWORD dwKeyState, CPoint point);
-	virtual void OnDragLeave();
+	virtual void OnDragLeave(void);
 	virtual DROPEFFECT OnDragOver(COleDataObject* pDataObject, DWORD dwKeyState, CPoint point);
 	//virtual BOOL OnDrop(COleDataObject* pDataObject, DROPEFFECT dropEffect, CPoint point);
 	afx_msg void OnContextMenu(CWnd* /*pWnd*/, CPoint /*point*/);
-	afx_msg void OnClipDelete();
-	afx_msg void OnTransitionSetIn();
+	afx_msg void OnClipDelete(void);
+	afx_msg void OnTransitionSetIn(void);
+	afx_msg void OnTransitionSetOut(void);
+	afx_msg void OnTransitionResetInCenter(void);
+	afx_msg void OnTransitionResetInStart(void);
+	afx_msg void OnTransitionResetInEnd(void);
+	afx_msg void OnTransitionResetOutCenter(void);
+	afx_msg void OnTransitionResetOutStart(void);
+	afx_msg void OnTransitionResetOutEnd(void);
+	void OnPlay(int iSpeed);
+	void OnStop(void);
+	int GetTimelineCursorFrame(void);
+
+	void SetMainWnd(CWnd* pWnd) { m_pMainWnd = pWnd; }
+	void SetParentDialog(TimelineEditorDialog* pDlg) { m_pParentDialog = pDlg; }
+
+	afx_msg void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
 };

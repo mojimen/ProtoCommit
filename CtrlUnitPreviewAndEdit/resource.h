@@ -18,6 +18,11 @@
 #define ID_TRANSITION_RESET_OUT_START   32838
 #define ID_TRANSITION_RESET_OUT_CENTER  32839
 #define ID_TRANSITION_RESET_OUT_END     32840
+#define ID_VIEW_FULLSCREEN              33001
+#define ID_HIDE_EDITOR                  33002
+#define ID_CHANGE_TIMELINECURSOR        33003
+#define ID_PLAY                         33101
+#define ID_GET_TIMELINECURSORFRAME      33102
 
 // Next default values for new objects
 // 
@@ -26,6 +31,6 @@
 #define _APS_NEXT_RESOURCE_VALUE        313
 #define _APS_NEXT_COMMAND_VALUE         32841
 #define _APS_NEXT_CONTROL_VALUE         1000
-#define _APS_NEXT_SYMED_VALUE           312
+#define _APS_NEXT_SYMED_VALUE           317
 #endif
 #endif

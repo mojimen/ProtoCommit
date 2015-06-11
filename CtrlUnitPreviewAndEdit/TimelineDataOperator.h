@@ -53,15 +53,17 @@ private:
 
 	CRect m_rcMousePointRect;			// 移動中のイメージ（重なり中のイメージ）
 	CPoint m_poMousePointerLocation;	// マウスボタンが押されたときの位置
-	BOOL m_fLButtonDown;			// マウスボタンが押されているかどうかを記録
+	BOOL m_fLButtonDown;				// マウスボタンが押されているかどうかを記録
 	BOOL m_fMove;						// Move操作中
-	BOOL m_fSingleInTrim;			// In側SingleTrim操作中
-	BOOL m_fSingleOutTrim;			// Out側SingleTrim操作中
-	BOOL m_fScrub;					// Scrub操作中
+	BOOL m_fSingleInTrim;				// In側SingleTrim操作中
+	BOOL m_fSingleOutTrim;				// Out側SingleTrim操作中
+	BOOL m_fScrub;						// Scrub操作中
 	BOOL m_fDragShuttle;				// DragShuttle操作中
 	BOOL m_fDragAndDrop;				// Drag&Drop操作中
-	BOOL m_fAllowFile;				// Drag&Drop操作物のドロップ可否（形式チェック結果）
-	BOOL m_fAllowDrop;				// Drag&Drop操作可否
+	BOOL m_fAllowFile;					// Drag&Drop操作物のドロップ可否（形式チェック結果）
+	BOOL m_fAllowDrop;					// Drag&Drop操作可否
+	BOOL m_fPreviewWork;				// プレビュー動作中
+	BOOL m_fPlay;						// 再生中
 
 	// タイムラインデータ管理
 	TimelineDataManager* m_pTimelineDataManager;
@@ -94,6 +96,7 @@ private:
 	float m_fSuttleSpeed;				// シャトル操作中の移動スピード（倍）
 	int m_iEnableMovingFrameCount;		// Move操作中に移動が可能であった直近の移動フレーム数
 	TrackDataRect* m_pEnableMovingTrack;// Move操作中に移動が可能であった直近のトラック位置
+	int m_iPlayFrameCount;				// 再生中の再生済みフレーム数
 
 	int m_iFramePerPoint;				// １ポイントあたりのフレーム数
 	int m_iPointPerFrame;				// １フレームあたりのポイント数
@@ -116,7 +119,20 @@ public:
 	DROPEFFECT OnDragOver(COleDataObject* pDataObject, DWORD dwKeyState, const CPoint& point);
 	//BOOL OnDrop(COleDataObject* pDataObject, DROPEFFECT dropEffect, CPoint point);
 	BOOL OnContextMenu(const CPoint& poClientPoint, CMenu& mContextMenu);
-	BOOL TimelineDataOperator::OnTransitionSetIn(PCTSTR pszMessage);
+	BOOL OnTransitionSetIn(PCTSTR pszMessage);
+	BOOL OnTransitionSetOut(PCTSTR pszMessage);
+	BOOL OnTransitionResetInCenter(void);
+	BOOL OnTransitionResetInStart(void);
+	BOOL OnTransitionResetInEnd(void);
+	BOOL OnTransitionResetOutCenter(void);
+	BOOL OnTransitionResetOutStart(void);
+	BOOL OnTransitionResetOutEnd(void);
+	BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint poPoint);
+
+	// プレビュー連動
+	BOOL OnPlay(int iSpeed);
+	void OnStop(void);
+
 
 	BOOL ChangeDisplayScale(void);
 	void CalcTimelineDisplayRange(void);
@@ -169,6 +185,8 @@ public:
 	BOOL IsDragAndDrop(void){ return m_fDragAndDrop; }
 	BOOL IsDropFileCrrect(void){ return m_fDragAndDrop && m_fAllowFile; }
 	BOOL EnableDrawDragRect(void){ return m_fDragAndDrop && m_fAllowFile && m_fAllowDrop; }
+	BOOL IsPlaying(void) { return m_fPlay; }
+	BOOL IsPreviewWorking(void) { return m_fPreviewWork; }
 
 	int GetTimelineCursorFramePosition(void){ return m_iTimelineCursorFramePosition; }
 	int GetLeftFrameNumber(void){ return m_iLeftFrameNumber; }
@@ -202,9 +220,6 @@ public:
 	void SetRectAroundPoint(ClipDataRect& pClipRect, const POINT point, const int& iInputHeight);
 
 	BOOL DeleteClip(void);
-
-	ClipDataRect* IsTransitionSetInSide(TrackDataInfo& cTrackInfo, ClipDataRect& cClipRect);
-	ClipDataRect* IsTransitionSetOutSide(ClipDataRect& cClipRect);
 	CMenu* FindSubMenuFromString(CMenu* pMenu, LPCTSTR pszSearchString, int& nPos);
 
 };

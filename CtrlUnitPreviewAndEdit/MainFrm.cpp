@@ -17,7 +17,7 @@ IMPLEMENT_DYNAMIC(CMainFrame, CMDIFrameWnd)
 
 BEGIN_MESSAGE_MAP(CMainFrame, CMDIFrameWnd)
 	ON_WM_CREATE()
-	ON_COMMAND(IDC_VIEW_FULLSCREEN, OnViewFullScreen)
+	ON_COMMAND(ID_VIEW_FULLSCREEN, OnViewFullScreen)
 END_MESSAGE_MAP()
 
 // CMainFrame コンストラクション/デストラクション
@@ -97,7 +97,7 @@ void CMainFrame::OnViewFullScreen()
 		SetMenu(&mMenu);
 		DeleteObject(mMenu);
 
-		SetWindowPos(NULL, m_rcWindowSize.left, m_rcWindowSize.top, m_rcWindowSize.Width(), m_rcWindowSize.Height(), SWP_NOZORDER | SWP_FRAMECHANGED);
+		SetWindowPos(&wndNoTopMost, m_rcWindowSize.left, m_rcWindowSize.top, m_rcWindowSize.Width(), m_rcWindowSize.Height(), SWP_FRAMECHANGED);
 		
 		m_rcWindowSize.SetRectEmpty();
 		m_fFullScreen = FALSE;
@@ -124,7 +124,7 @@ void CMainFrame::OnViewFullScreen()
 		dwExStyle &= ~WS_EX_CLIENTEDGE;		
 		SetWindowLong(this->m_hWnd, GWL_EXSTYLE, dwExStyle);
 
-		SetWindowPos(NULL, rcMonitor.left, rcMonitor.top, rcMonitor.right - rcMonitor.left, rcMonitor.bottom - rcMonitor.top, SWP_NOZORDER | SWP_FRAMECHANGED);
+		SetWindowPos(&wndTopMost, rcMonitor.left, rcMonitor.top, rcMonitor.right - rcMonitor.left, rcMonitor.bottom - rcMonitor.top, SWP_FRAMECHANGED);
 
 		//CMDIChildWnd* pWnd = MDIGetActive();
 		//CView* pView = pWnd->GetActiveView();
