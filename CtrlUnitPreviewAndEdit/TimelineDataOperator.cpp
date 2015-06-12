@@ -31,6 +31,7 @@ TimelineDataOperator::TimelineDataOperator()
 	m_fAllowDrop = FALSE;
 	m_fPreviewWork = FALSE;
 	m_fPlay = FALSE;
+	m_fJumpFrame = FALSE;
 
 	m_iLeftFrameNumber = 0;
 	m_iRightFrameNumber = 0;
@@ -183,7 +184,7 @@ BOOL TimelineDataOperator::OnLButtonDown(UINT nFlags, CPoint point)
 	if (IsPointInClip(point))
 	{
 		// 再生中
-		if (m_fPreviewWork)
+		if (m_fPlay)
 		{
 			return FALSE;
 		}
@@ -208,11 +209,28 @@ BOOL TimelineDataOperator::OnLButtonDown(UINT nFlags, CPoint point)
 	}
 	else
 	{
-		// タイムラインカーソル判定
-		if (m_pTimelineCursorHitArea->PtInRect(point))
+		// シークバー内、または タイムラインエディットエリア内のトラック上以外かタイムラインカーソル以外
+		if ((IsPointInSeekBar(point)) || 
+			(m_pTimelineDataRect->PtInRect(point) && (IsPointInAnyTrack(point) == nullptr) && (!m_pTimelineCursorHitArea->PtInRect(point))))
 		{
 			// 再生中
-			if (m_fPreviewWork)
+			if (m_fPlay)
+			{
+				return FALSE;
+			}
+			int iDummy;
+			m_iJumpFrameCursorPosition = ChangeDisplayPointToTimelineFramePosition(point, iDummy);
+			m_fLButtonDown = TRUE;
+			m_fScrub = TRUE;
+			m_poMousePointerLocation = point;	// 移動量計算のため、初期座標を保存
+			m_iOperatingFrameCount = 0;
+			return TRUE;
+		}
+		// タイムラインカーソル判定
+		else if (m_pTimelineCursorHitArea->PtInRect(point))
+		{
+			// 再生中
+			if (m_fPlay)
 			{
 				return FALSE;
 			}
@@ -222,19 +240,6 @@ BOOL TimelineDataOperator::OnLButtonDown(UINT nFlags, CPoint point)
 			m_iOperatingFrameCount = 0;
 			m_fSuttleSpeed = 0;
 			return TRUE;
-		}
-		// シークバー内判定
-		else if (IsPointInSeekBar(point))
-		{
-			// 再生中
-			if (m_fPreviewWork)
-			{
-				return FALSE;
-			}
-			m_fLButtonDown = TRUE;
-			m_fScrub = TRUE;
-			m_poMousePointerLocation = point;	// 移動量計算のため、初期座標を保存
-			m_iOperatingFrameCount = 0;
 		}
 		// タイムラインコントロールパネル内判定
 		else if (IsPointInTimelineControlPanel(point))
@@ -249,41 +254,41 @@ BOOL TimelineDataOperator::OnLButtonDown(UINT nFlags, CPoint point)
 			}
 			else
 			{
-				if (m_iFramePerPoint <= 216000)
+				if (m_iFramePerPoint <= FRAMEPERPOINT_MAX)
 				{
-					// TODO: もっと効率よく！
-					if (m_iFramePerPoint <10)
-					{
+				//	// TODO: もっと効率よく！
+				//	if (m_iFramePerPoint < 10)
+				//	{
 						++m_iFramePerPoint;
-					}
-					else if (m_iFramePerPoint <60)
-					{
-						m_iFramePerPoint += 5;
-					}
-					else if (m_iFramePerPoint <600)
-					{
-						m_iFramePerPoint += 60;
-					}
-					else if (m_iFramePerPoint <3600)
-					{
-						m_iFramePerPoint += 300;
-					}
-					else if (m_iFramePerPoint <36000)
-					{
-						m_iFramePerPoint += 18000;
-					}
-					else
-					{
-						m_iFramePerPoint += 36000;
-						if (m_iFramePerPoint > 216000)
-						{
-							m_iFramePerPoint = 216000;
-						}
-					}
+				//	}
+				//	else if (m_iFramePerPoint < 60)
+				//	{
+				//		m_iFramePerPoint += 5;
+				//	}
+				//	else if (m_iFramePerPoint < 600)
+				//	{
+				//		m_iFramePerPoint += 60;
+				//	}
+				//	else if (m_iFramePerPoint < 3600)
+				//	{
+				//		m_iFramePerPoint += 300;
+				//	}
+				//	else if (m_iFramePerPoint < 36000)
+				//	{
+				//		m_iFramePerPoint += 18000;
+				//	}
+				//	else
+				//	{
+				//		m_iFramePerPoint += 36000;
+				//		if (m_iFramePerPoint > 216000)
+				//		{
+				//			m_iFramePerPoint = 216000;
+				//		}
+				//	}
 				}
 				else
 				{
-					m_iFramePerPoint = 216000;
+					m_iFramePerPoint = FRAMEPERPOINT_MAX;
 				}
 			}
 			if (ChangeDisplayScale())
@@ -296,65 +301,64 @@ BOOL TimelineDataOperator::OnLButtonDown(UINT nFlags, CPoint point)
 }
 
 // Ｌボタンアップ
-BOOL TimelineDataOperator::OnLButtonUp(UINT nFlags, CPoint point)
+BOOL TimelineDataOperator::OnLButtonUp(UINT nFlags, CPoint point, BOOL& fStopPlay)
 {
-	// 再生中
-	if (m_fPreviewWork)
-	{
-		return FALSE;
-	}
+	m_fJumpFrame = FALSE;
 	m_fLButtonDown = FALSE;
-	if (m_fMove)
+	if (m_fDragShuttle)
 	{
-		int iIn = m_pOperatingClipData->GetTimelineInPoint();
-		m_pSelectedTrackInfo->DeleteClip(iIn);
-		iIn += m_iOperatingClipFrameCount;
-		m_pOperatingClipData->SetTimelineInPoint(iIn);
-		m_pOperatingClipData->SetTimelineOutPoint();
-		(m_pEnableMovingTrack->GetTrackDataInfo())->AddClip(iIn, m_pOperatingClipData);
-		m_pOperatingClipData->CopyRect(m_pOperatingClipData->GetOperatingRect());
+		m_iShuttleSpeedNumerator = 0;
+		m_iShuttleSpeedDenominator = 0;
+		fStopPlay = TRUE;
 	}
-	else if (m_fSingleInTrim)
+	else
 	{
-		int iIn = m_pOperatingClipData->GetTimelineInPoint();
-		m_pSelectedTrackInfo->ChangeClip(iIn, iIn + m_iOperatingClipFrameCount, m_pOperatingClipData);
-		m_pOperatingClipData->AddTimelineInPoint(m_iOperatingClipFrameCount);
-		m_pOperatingClipData->AddInPoint(m_iOperatingClipFrameCount);
-		// In側に伸びる（マイナス方向への移動）は長さを加算
-		m_pOperatingClipData->AddDuration((-1 * m_iOperatingClipFrameCount));
-		m_pOperatingClipData->CopyRect(m_pOperatingClipData->GetOperatingRect());
-	}
-	else if (m_fSingleOutTrim)
-	{
-		m_pOperatingClipData->AddTimelineOutPoint(m_iOperatingClipFrameCount);
-		m_pOperatingClipData->AddOutPoint(m_iOperatingClipFrameCount);
-		m_pOperatingClipData->AddDuration(m_iOperatingClipFrameCount);
-		m_pOperatingClipData->CopyRect(m_pOperatingClipData->GetOperatingRect());
-	}
-	else if (m_fScrub)
-	{
-		if ((point.x == m_poMousePointerLocation.x) && (point.y == m_poMousePointerLocation.y))
+		// 再生中
+		if (m_fPlay)
 		{
-			int iDummy;
-			int iFrame = ChangeDisplayPointToTimelineFramePosition(point, iDummy);
-			// TODO: できれば実現
-			//DrawAnimation(iFrame - m_iTimelineCursorFramePosition);
-			m_iOperatingFrameCount = iFrame - m_iTimelineCursorFramePosition;
-			m_iTimelineCursorFramePosition = iFrame;
-			m_iLeftFrameNumber += m_iOperatingFrameCount;
-			m_iRightFrameNumber += m_iOperatingFrameCount;
-			m_iOperatingTimelineCursorFramePosition = m_iTimelineCursorFramePosition;
-			m_iOperatingLeftFrameNumber = m_iLeftFrameNumber;
-			m_iOperatingRightFrameNumber = m_iRightFrameNumber;
+			return FALSE;
 		}
-		else
+		if (m_fMove)
 		{
-			m_iTimelineCursorFramePosition += m_iOperatingFrameCount;
-			m_iLeftFrameNumber += m_iOperatingFrameCount;
-			m_iRightFrameNumber += m_iOperatingFrameCount;
-			m_iOperatingTimelineCursorFramePosition = m_iTimelineCursorFramePosition;
-			m_iOperatingLeftFrameNumber = m_iLeftFrameNumber;
-			m_iOperatingRightFrameNumber = m_iRightFrameNumber;
+			int iIn = m_pOperatingClipData->GetTimelineInPoint();
+			m_pSelectedTrackInfo->DeleteClip(iIn);
+			iIn += m_iOperatingClipFrameCount;
+			m_pOperatingClipData->SetTimelineInPoint(iIn);
+			m_pOperatingClipData->SetTimelineOutPoint();
+			(m_pEnableMovingTrack->GetTrackDataInfo())->AddClip(iIn, m_pOperatingClipData);
+			m_pOperatingClipData->CopyRect(m_pOperatingClipData->GetOperatingRect());
+		}
+		else if (m_fSingleInTrim)
+		{
+			int iIn = m_pOperatingClipData->GetTimelineInPoint();
+			m_pSelectedTrackInfo->ChangeClip(iIn, iIn + m_iOperatingClipFrameCount, m_pOperatingClipData);
+			m_pOperatingClipData->AddTimelineInPoint(m_iOperatingClipFrameCount);
+			m_pOperatingClipData->AddInPoint(m_iOperatingClipFrameCount);
+			// In側に伸びる（マイナス方向への移動）は長さを加算
+			m_pOperatingClipData->AddDuration((-1 * m_iOperatingClipFrameCount));
+			m_pOperatingClipData->CopyRect(m_pOperatingClipData->GetOperatingRect());
+		}
+		else if (m_fSingleOutTrim)
+		{
+			m_pOperatingClipData->AddTimelineOutPoint(m_iOperatingClipFrameCount);
+			m_pOperatingClipData->AddOutPoint(m_iOperatingClipFrameCount);
+			m_pOperatingClipData->AddDuration(m_iOperatingClipFrameCount);
+			m_pOperatingClipData->CopyRect(m_pOperatingClipData->GetOperatingRect());
+		}
+		else if (m_fScrub)
+		{
+			if ((point.x == m_poMousePointerLocation.x) && (point.y == m_poMousePointerLocation.y))
+			{
+				int iDummy;
+				m_iJumpFrameCursorPosition = ChangeDisplayPointToTimelineFramePosition(point, iDummy);
+				m_fJumpFrame = TRUE;
+				m_iJumpFrameCount = 0;
+				m_iJumpFrameCount = m_iJumpFrameCursorPosition - m_iTimelineCursorFramePosition;
+			}
+			else
+			{
+				MoveTimelineCursor(m_iOperatingFrameCount);
+			}
 		}
 	}
 
@@ -381,38 +385,38 @@ BOOL TimelineDataOperator::OnRButtonUp(UINT nFlags, CPoint point)
 	{
 		if (m_iFramePerPoint < 1)
 		{
-			if (m_iPointPerFrame < 120)
+			if (m_iPointPerFrame < POINTPERFRAME_MAX)
 			{
 				++m_iPointPerFrame;
 			}
 		}
 		else
 		{
-			// TODO: もっと効率よく！
-			if (m_iFramePerPoint <= 10)
-			{
+			//// TODO: もっと効率よく！
+			//if (m_iFramePerPoint <= 10)
+			//{
 				--m_iFramePerPoint;
-			}
-			else if (m_iFramePerPoint <= 60)
-			{
-				m_iFramePerPoint -= 5;
-			}
-			else if (m_iFramePerPoint <= 600)
-			{
-				m_iFramePerPoint -= 60;
-			}
-			else if (m_iFramePerPoint <= 3600)
-			{
-				m_iFramePerPoint -= 300;
-			}
-			else if (m_iFramePerPoint <= 36000)
-			{
-				m_iFramePerPoint -= 18000;
-			}
-			else
-			{
-				m_iFramePerPoint -= 36000;
-			}
+			//}
+			//else if (m_iFramePerPoint <= 60)
+			//{
+			//	m_iFramePerPoint -= 5;
+			//}
+			//else if (m_iFramePerPoint <= 600)
+			//{
+			//	m_iFramePerPoint -= 60;
+			//}
+			//else if (m_iFramePerPoint <= 3600)
+			//{
+			//	m_iFramePerPoint -= 300;
+			//}
+			//else if (m_iFramePerPoint <= 36000)
+			//{
+			//	m_iFramePerPoint -= 18000;
+			//}
+			//else
+			//{
+			//	m_iFramePerPoint -= 36000;
+			//}
 			if (m_iFramePerPoint < 1)
 			{
 				m_iPointPerFrame = 2;
@@ -427,16 +431,40 @@ BOOL TimelineDataOperator::OnRButtonUp(UINT nFlags, CPoint point)
 }
 
 // マウス移動
-BOOL TimelineDataOperator::OnMouseMove(UINT nFlags, CPoint point)
+BOOL TimelineDataOperator::OnMouseMove(UINT nFlags, CPoint point, BOOL& fStartPlay)
 {
-	// 再生中
-	if (m_fPreviewWork)
-	{
-		return FALSE;
-	}
 	if (m_fLButtonDown)
 	{
 		CSize szMoveSize(point - m_poMousePointerLocation);
+		if (m_fDragShuttle)
+		{
+			if (szMoveSize.cx == 0)
+			{
+				return FALSE;
+			}
+			// マウス位置から倍速速度を取得
+			int iNumerator = m_iShuttleSpeedNumerator;
+			int iDenominator = m_iShuttleSpeedDenominator;
+			CalcShuttleSpeed(point, szMoveSize, iNumerator, iDenominator);
+			if ((iNumerator == m_iShuttleSpeedNumerator) && (iDenominator == m_iShuttleSpeedDenominator))
+			{
+				return FALSE;
+			}
+			// TODO: 分数を使うようになったら再考
+			m_iShuttleSpeedNumerator = iNumerator;
+			m_iShuttleSpeedDenominator = iDenominator;
+			if ((iNumerator < 0) && (m_iTimelineCursorFramePosition < abs(iNumerator)))
+			{
+				return FALSE;
+			}
+			fStartPlay = TRUE;
+			return TRUE;
+		}
+		// 再生中
+		if (m_fPlay)
+		{
+			return FALSE;
+		}
 		if (m_fMove)
 		{
 			m_pOperateToTrack = IsPointInAnyTrack(point);
@@ -470,6 +498,10 @@ BOOL TimelineDataOperator::OnMouseMove(UINT nFlags, CPoint point)
 		}
 		else if (m_fScrub)
 		{
+			if ((szMoveSize.cx != 0) && (szMoveSize.cx != 0))
+			{
+				m_iJumpFrameCursorPosition = 0;
+			}
 			szMoveSize.cx *= -1;
 			m_iOperatingFrameCount = ChangeOperatingDistanceToTimelineFrames(szMoveSize, m_iTimelineCursorFramePosition);
 			// 最小範囲チェック
@@ -483,18 +515,12 @@ BOOL TimelineDataOperator::OnMouseMove(UINT nFlags, CPoint point)
 			m_iOperatingTimelineCursorFramePosition = m_iTimelineCursorFramePosition + m_iOperatingFrameCount;
 			return TRUE;
 		}
-		else if (m_fDragShuttle)
-		{
-			//// マウス位置から倍速速度を取得
-			//m_fSuttleSpeed = SetShuttleSpeed(point, szMoveSize);
-			//Invalidate();
-		}
 	}
 	return FALSE;
 }
 
 // マウスホイール
-BOOL TimelineDataOperator::OnMouseWheel(UINT nFlags, short zDelta, CPoint poPoint)
+BOOL TimelineDataOperator::OnMouseWheel(UINT nFlags, short zDelta, CPoint poPoint, BOOL& fCursorChange)
 {
 	int iLength = static_cast<int>(ceil(zDelta / 120.0)) * -1;
 
@@ -503,7 +529,7 @@ BOOL TimelineDataOperator::OnMouseWheel(UINT nFlags, short zDelta, CPoint poPoin
 	if (IsPointInClip(poPoint))
 	{
 		// 再生中
-		if (m_fPreviewWork)
+		if (m_fPlay)
 		{
 			return FALSE;
 		}
@@ -547,6 +573,10 @@ BOOL TimelineDataOperator::OnMouseWheel(UINT nFlags, short zDelta, CPoint poPoin
 				m_iPointPerFrame = 0;
 				m_iFramePerPoint = 2;
 			}
+			else if (m_iPointPerFrame > POINTPERFRAME_MAX)
+			{
+				m_iPointPerFrame = POINTPERFRAME_MAX;
+			}
 		}
 		else
 		{
@@ -555,6 +585,10 @@ BOOL TimelineDataOperator::OnMouseWheel(UINT nFlags, short zDelta, CPoint poPoin
 			{
 				m_iFramePerPoint = 0;
 				m_iPointPerFrame = 2;
+			}
+			else if (m_iPointPerFrame > FRAMEPERPOINT_MAX)
+			{
+				m_iPointPerFrame = FRAMEPERPOINT_MAX;
 			}
 		}
 		if (ChangeDisplayScale())
@@ -566,15 +600,21 @@ BOOL TimelineDataOperator::OnMouseWheel(UINT nFlags, short zDelta, CPoint poPoin
 	else
 	{
 		// 再生中
-		if (m_fPreviewWork)
+		if (m_fPlay)
 		{
 			return FALSE;
 		}
+		int iPosition = m_iTimelineCursorFramePosition;
 		m_iTimelineCursorFramePosition += iLength;
 		if (m_iTimelineCursorFramePosition < 0)
 		{
 			m_iTimelineCursorFramePosition = 0;
 		}
+		if (iPosition == m_iTimelineCursorFramePosition)
+		{
+			return FALSE;
+		}
+		fCursorChange = TRUE;
 		CalcTimelineDisplayRange();
 		if (m_iPointPerFrame > 0)
 		{
@@ -586,7 +626,7 @@ BOOL TimelineDataOperator::OnMouseWheel(UINT nFlags, short zDelta, CPoint poPoin
 		}
 		return FALSE;
 	}
-	return TRUE;
+	return FALSE;
 }
 
 
@@ -606,7 +646,7 @@ BOOL TimelineDataOperator::OnDropFiles(const HDROP& hDropInfo, CString& strFileN
 	m_fAllowDrop = FALSE;
 
 	// 再生中
-	if (m_fPreviewWork)
+	if (m_fPlay)
 	{
 		return FALSE;
 	}
@@ -661,7 +701,7 @@ BOOL TimelineDataOperator::OnDropFiles(const HDROP& hDropInfo, CString& strFileN
 BOOL TimelineDataOperator::OnDragEnter(COleDataObject* pDataObject, DWORD dwKeyState, const CPoint& point)
 {
 	// 再生中
-	if (m_fPreviewWork)
+	if (m_fPlay)
 	{
 		return FALSE;
 	}
@@ -735,7 +775,7 @@ void TimelineDataOperator::OnDragLeave(void)
 DROPEFFECT TimelineDataOperator::OnDragOver(COleDataObject* pDataObject, DWORD dwKeyState, const CPoint& point)
 {
 	// 再生中
-	if (m_fPreviewWork)
+	if (m_fPlay)
 	{
 		return FALSE;
 	}
@@ -782,7 +822,7 @@ DROPEFFECT TimelineDataOperator::OnDragOver(COleDataObject* pDataObject, DWORD d
 BOOL TimelineDataOperator::OnContextMenu(const CPoint& poClientPoint, CMenu& mContextMenu)
 {
 	// 再生中
-	if (m_fPreviewWork)
+	if (m_fPlay)
 	{
 		return FALSE;
 	}
@@ -1272,17 +1312,22 @@ BOOL TimelineDataOperator::OnPlay(int iSpeed)
 	{
 		m_fPreviewWork = TRUE;
 		m_fPlay = TRUE;
+		m_iPlayFrameCount = 0;
 	}
-	m_iTimelineCursorFramePosition += iSpeed;
-	CalcTimelineDisplayRange();
+	MoveTimelineCursor(iSpeed);
 	if (m_iPointPerFrame > 0)
 	{
 		return TRUE;
 	}
-	if (m_iTimelineCursorFramePosition % m_iFramePerPoint == 0)
+	m_iPlayFrameCount += abs(iSpeed);
+	//if (m_iTimelineCursorFramePosition % m_iFramePerPoint == 0)
+	//{
+	if (m_iPlayFrameCount > m_iFramePerPoint)
 	{
+		m_iPlayFrameCount -= m_iFramePerPoint;
 		return TRUE;
 	}
+	//}
 	return FALSE;
 }
 
@@ -1291,6 +1336,7 @@ void TimelineDataOperator::OnStop(void)
 {
 	m_fPreviewWork = FALSE;
 	m_fPlay = FALSE;
+	m_iPlayFrameCount = 0;
 }
 
 
@@ -1711,6 +1757,8 @@ ClipDataRect* TimelineDataOperator::IsClipAtOut(TrackDataInfo& cTrackInfo, const
 }
 
 
+
+
 /*
 
 座標、位置計算系
@@ -2047,6 +2095,17 @@ BOOL TimelineDataOperator::CheckMove(CPoint& point)
 
 
 
+// タイムラインカーソルを所定の距離ずらす
+void TimelineDataOperator::MoveTimelineCursor(int iLength)
+{
+	m_iTimelineCursorFramePosition += iLength;
+	m_iLeftFrameNumber += iLength;
+	m_iRightFrameNumber += iLength;
+	m_iOperatingTimelineCursorFramePosition = m_iTimelineCursorFramePosition;
+	m_iOperatingLeftFrameNumber = m_iLeftFrameNumber;
+	m_iOperatingRightFrameNumber = m_iRightFrameNumber;
+}
+
 // 入力のポイントを中心とした位置にクリップの配置を変更する。
 void TimelineDataOperator::SetRectAroundPoint(ClipDataRect& cClipRect, const POINT point, const int& iInputHeight)
 {
@@ -2065,6 +2124,73 @@ void TimelineDataOperator::SetRectAroundPoint(ClipDataRect& cClipRect, const POI
 }
 
 
+// シャトルスピードの算定
+BOOL TimelineDataOperator::CalcShuttleSpeed(const CPoint& point, const CSize& szMoveSize, int& iNumerator, int& iDenominator)
+{
+	int iWidth = m_pTimelineDataRect->Width();
+	int iMove = abs(szMoveSize.cx);
+	int iSign = 1;
+	if (szMoveSize.cx < 0)
+	{
+		iSign = -1;
+	}
+
+	if (iMove < iWidth *0.05)
+	{
+		return TRUE;
+	}
+	else if (iMove < iWidth * 0.2)
+	{
+		iNumerator = 1 * iSign;
+		iDenominator = 1;
+	}
+	else if (iMove < iWidth * 0.3)
+	{
+		iNumerator = 2 * iSign;
+		iDenominator = 1;
+	}
+	else if (iMove < iWidth * 0.35)
+	{
+		iNumerator = 3 * iSign;
+		iDenominator = 1;
+	}
+	else if (iMove < iWidth * 0.4)
+	{
+		iNumerator = 4 * iSign;
+		iDenominator = 1;
+	}
+	else if (iMove < iWidth * 0.42)
+	{
+		iNumerator = 5 * iSign;
+		iDenominator = 1;
+	}
+	else if (iMove < iWidth * 0.44)
+	{
+		iNumerator = 6 * iSign;
+		iDenominator = 1;
+	}
+	else if (iMove < iWidth * 0.45)
+	{
+		iNumerator = 7 * iSign;
+		iDenominator = 1;
+	}
+	else if (iMove < iWidth * 0.46)
+	{
+		iNumerator = 8 * iSign;
+		iDenominator = 1;
+	}
+	else if (iMove < iWidth * 0.47)
+	{
+		iNumerator = 9 * iSign;
+		iDenominator = 1;
+	}
+	else
+	{
+		iNumerator = 10 * iSign;
+		iDenominator = 1;
+	}
+	return TRUE;
+}
 
 // クリップを削除する
 BOOL TimelineDataOperator::DeleteClip(void)

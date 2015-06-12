@@ -58,6 +58,7 @@ CCtrlUnitPreviewView::CCtrlUnitPreviewView()
 	//m_pPlaybackController = nullptr;
 	m_pPlayButton = nullptr;
 	m_pStopButton = nullptr;
+	m_pFullScreenButton = nullptr;
 	m_pTimelineEditorButton = nullptr;
 	m_fPlay = FALSE;
 	//m_fThread = FALSE;
@@ -85,34 +86,17 @@ void CCtrlUnitPreviewView::OnDraw(CDC* pDC)
 	ASSERT_VALID(pDoc);
 	if (!pDoc)
 		return;
-
-	if (!m_pMainFrame->GetScreenMode())
+	
+	// TODO: この場所にネイティブ データ用の描画コードを追加します。
+	
+	if ((!m_pMainFrame->GetScreenMode()) && !m_fPlay)
 	{
 		DrawSmallScreen(*pDC);
 	}
 	else
 	{
-		wglMakeCurrent(m_pDC->GetSafeHdc(), m_hRC);
-		//timeBeginPeriod(1);
-		//DWORD dwTime;
-		//CString strTime;
-		//dwTime = timeGetTime();
-		//strTime.Format(_T("a%d\n"), dwTime);
-		//OutputDebugString(strTime);
-		// 背景塗りつぶし
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glFlush();
-		SwapBuffers(m_pDC->GetSafeHdc());
-		wglMakeCurrent(NULL, NULL);
-		//timeEndPeriod(1);
-
-
+		DrawFullScreen(*pDC);
 	}
-
-
-	// TODO: この場所にネイティブ データ用の描画コードを追加します。
-
 }
 
 
@@ -193,6 +177,10 @@ void CCtrlUnitPreviewView::OnDestroy()
 	{
 		delete m_pStopButton;
 	}
+	if (m_pFullScreenButton)
+	{
+		delete m_pFullScreenButton;
+	}
 	if (m_pTimelineEditorButton)
 	{
 		delete m_pTimelineEditorButton;
@@ -236,9 +224,11 @@ void CCtrlUnitPreviewView::OnInitialUpdate()
 
 	m_pPlayButton = new OpenGLRect();
 	m_pStopButton = new OpenGLRect();
+	m_pFullScreenButton = new OpenGLRect();
 	m_pTimelineEditorButton = new OpenGLRect();
 	m_pPlayButton->SetBothColor(PLAYBUTTON_BRUSH, PLAYBUTTON_BRUSH, PLAYBUTTON_BRUSH, PLAYBUTTON_BRUSH);
 	m_pStopButton->SetBothColor(STOPBUTTON_BRUSH, STOPBUTTON_BRUSH, STOPBUTTON_BRUSH, STOPBUTTON_BRUSH);
+	m_pFullScreenButton->SetBothColor(FULLSCREENBUTTON_BRUSH, FULLSCREENBUTTON_BRUSH, FULLSCREENBUTTON_BRUSH, FULLSCREENBUTTON_BRUSH);
 	m_pTimelineEditorButton->SetBothColor(TIMELINEEDITORBUTTON_BRUSH, TIMELINEEDITORBUTTON_BRUSH, TIMELINEEDITORBUTTON_BRUSH, TIMELINEEDITORBUTTON_BRUSH);
 	SetButtonRect();
 
@@ -266,6 +256,10 @@ void CCtrlUnitPreviewView::OnLButtonDown(UINT nFlags, CPoint point)
 		// 実際は機能なし
 		m_fPlay = FALSE;
 	}
+	else if (m_pFullScreenButton->PtInRect(point))
+	{
+		ChangeScreenSize();
+	}
 	else if (m_pTimelineEditorButton->PtInRect(point))
 	{
 		ChangeDisplayTimelineEditor();
@@ -277,7 +271,7 @@ void CCtrlUnitPreviewView::OnRButtonUp(UINT nFlags, CPoint point)
 {
 	// TODO: ここにメッセージ ハンドラー コードを追加するか、既定の処理を呼び出します。
 
-	if ((m_pPlayButton->PtInRect(point)) || (m_pStopButton->PtInRect(point)))
+	if ((m_pPlayButton->PtInRect(point)) || (m_pStopButton->PtInRect(point)) || (m_pFullScreenButton->PtInRect(point)))
 	{
 		return;
 	}
@@ -289,10 +283,13 @@ void CCtrlUnitPreviewView::OnLButtonDblClk(UINT nFlags, CPoint point)
 {
 	// TODO: ここにメッセージ ハンドラー コードを追加するか、既定の処理を呼び出します。
 
-	if ((m_pTimelineEditorButton->PtInRect(point)) || (m_pPlayButton->PtInRect(point)) || (m_pStopButton->PtInRect(point)))
+	if (!m_fPlay)
 	{
-		// ボタン上は無効
-		return;
+		if ((m_pTimelineEditorButton->PtInRect(point)) || (m_pPlayButton->PtInRect(point)) || (m_pStopButton->PtInRect(point)) || (m_pFullScreenButton->PtInRect(point)))
+		{
+			// ボタン上は無効
+			return;
+		}
 	}
 
 	// 再生開始
@@ -308,14 +305,39 @@ void CCtrlUnitPreviewView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
 	{
 
 	case VK_SPACE:
+		if (!m_fPlay)
+		{
+			ChangePlay();
+		}
+		else
+		{
+			PausePlay();
+		}
+		break;
+
 	case VK_RETURN:
 		ChangePlay();
 		break;
 
 	case VK_ESCAPE:
+		SetSmallScreen();
 		if (m_fPlay)
 		{
 			ChangePlay();
+		}
+		break;
+
+	case VK_PRIOR:
+		if (m_fPlay)
+		{
+			ChangePlaySpeed(1);
+		}
+		break;
+
+	case VK_NEXT:
+		if (m_fPlay)
+		{
+			ChangePlaySpeed(-1);
 		}
 		break;
 
@@ -351,12 +373,25 @@ void CCtrlUnitPreviewView::OnChangeTimelineCursor(void)
 
 // OpenGLTest
 
+// 全画面表示終了
+void CCtrlUnitPreviewView::SetSmallScreen(void)
+{
+	if (m_pMainFrame->GetScreenMode())
+	{
+		m_pMainWnd->SendMessage(WM_COMMAND, MAKEWPARAM(ID_VIEW_FULLSCREEN, 0), NULL);
+	}
+}
+
+// 画面サイズ切り替え
+void CCtrlUnitPreviewView::ChangeScreenSize(void)
+{
+	m_pMainWnd->SendMessage(WM_COMMAND, MAKEWPARAM(ID_VIEW_FULLSCREEN, 0), NULL);
+}
 
 // 再生状態の切り替え
-void CCtrlUnitPreviewView::ChangePlay(void)
+void CCtrlUnitPreviewView::ChangePlay(const int iNumerator /*= 1*/, const int iDenominator /*= 1*/)
 {
 	// ウィンドウサイズとフラグの切り替え
-	m_pMainWnd->SendMessage(WM_COMMAND, MAKEWPARAM(ID_VIEW_FULLSCREEN, 0), NULL);
 	m_fPlay = !m_fPlay;
 	if (!m_fPlay)
 	{
@@ -367,20 +402,69 @@ void CCtrlUnitPreviewView::ChangePlay(void)
 
 	if (m_fPlay)
 	{
+		if (!(m_pMainFrame->GetScreenMode()))
+		{
+			ChangeScreenSize();
+		}
 		// TODO: ここはメッセージ？
 		m_iTimelineCursorFrame = m_dlgTimelineEditor->GetTimelineCursorFrame();
 
-		m_iPlaySpeed = 1;
+		m_iPlaySpeed = iNumerator;
 		std::thread thPlay(&CCtrlUnitPreviewView::Play, this, TRUE);
 		thPlay.detach();
 	}
 }
 
+// 再生速度変更
+void CCtrlUnitPreviewView::ChangePlaySpeed(const int& iNumerator, const int& iDenominator)
+{
+	if (!m_fPlay)
+	{
+		return;
+	}
+
+	m_iPlaySpeed = iNumerator;
+}
+
+// 再生速度変更（相対値）
+void CCtrlUnitPreviewView::ChangePlaySpeed(const int& iSpeed)
+{
+	if (!m_fPlay)
+	{
+		return;
+	}
+	if (m_iPlaySpeed == 0)
+	{
+		return;
+	}
+	else if ((m_iPlaySpeed + iSpeed) == 0)
+	{
+		m_iPlaySpeed += (iSpeed * 2);
+	}
+	else
+	{
+		m_iPlaySpeed += iSpeed;
+	}
+}
+
+// 再生ポーズ
+void CCtrlUnitPreviewView::PausePlay(void)
+{
+	if (m_iPlaySpeed == 0)
+	{
+		m_iPlaySpeed = m_iLastPlaySpeed;
+		m_iLastPlaySpeed = 0;
+	}
+	else
+	{
+		m_iLastPlaySpeed = m_iPlaySpeed;
+		m_iPlaySpeed = 0;
+	}
+}
 
 // 暫定　再生スレッド
 void CCtrlUnitPreviewView::Play(BOOL fOdd /*= TRUE*/)
 {
-	//timeBeginPeriod(1);
 	DWORD dwTime,dwTimeZ;
 	CString strTime;
 	//int iHz = GetDeviceCaps(m_pDC->GetSafeHdc(), VREFRESH);
@@ -430,7 +514,7 @@ void CCtrlUnitPreviewView::Play(BOOL fOdd /*= TRUE*/)
 	//strTime.Format(_T("b%d\n"), dwTimeZ);
 	//OutputDebugString(strTime);
 
-	int iCount = 1, iCount2 = 0;
+	int iCount = 1, iCount2 = 0, iFrameCount = 0;
 	int iNext = 0;
 	int iCheckMilSecond = 100;
 	int iFps = 6;
@@ -440,10 +524,8 @@ void CCtrlUnitPreviewView::Play(BOOL fOdd /*= TRUE*/)
 	dwTimeCheck = timeGetTime();
 	//while (TRUE)
 	while (m_fPlay)
-	//for (int i=1; i <= 600; ++i)
 	{
-
-
+		iCount2 += m_iPlaySpeed;
 		if (iCount % 3 == 0)
 		{
 
@@ -455,7 +537,7 @@ void CCtrlUnitPreviewView::Play(BOOL fOdd /*= TRUE*/)
 			//m_fThread = TRUE;
 			//std::thread thDraw(&CCtrlUnitPreviewView::DrawFullScreen, this, rcRect);
 			//thDraw.detach();
-			DrawFullScreen(m_iPlaySpeed, iCount2, rcRect);
+			DrawFullScreen(m_iPlaySpeed, iCount2, iFrameCount, rcRect);
 			dwTimeN = timeGetTime();
 			dwTimeE = dwTimeN - dwTimeS;
 
@@ -498,7 +580,7 @@ void CCtrlUnitPreviewView::Play(BOOL fOdd /*= TRUE*/)
 			//m_fThread = TRUE;
 			//std::thread thDraw(&CCtrlUnitPreviewView::DrawFullScreen, this, rcRect);
 			//thDraw.detach();
-			DrawFullScreen(m_iPlaySpeed, iCount2, rcRect);
+			DrawFullScreen(m_iPlaySpeed, iCount2, iFrameCount, rcRect);
 			++iCount;
 			dwTimeE = timeGetTime() - dwTimeS;
 			iNext = iWait - dwTimeE;
@@ -511,29 +593,39 @@ void CCtrlUnitPreviewView::Play(BOOL fOdd /*= TRUE*/)
 
 			Sleep(iNext);
 		}
-
-		++iCount2;
+		if (m_iPlaySpeed != 0)
+		{
+			++iFrameCount;
+		}
+		if (m_iPlaySpeed < 0)
+		{
+			if (m_iTimelineCursorFrame + iCount2 == 0)
+			{
+				ChangePlay();
+			}
+			else
+			{
+				if (m_iTimelineCursorFrame + iCount2 + m_iPlaySpeed < 0)
+				{
+					m_iPlaySpeed = 0 - (iCount2 + m_iTimelineCursorFrame);
+				}
+			}
+		}
 		//dwTime = timeGetTime();
 		////strTime.Format(_T("cc%d\n"), (dwTime - dwTimeW));
 		////OutputDebugString(strTime);
 		//strTime.Format(_T("%d,%d\n"), iCount2, (dwTime - dwTimeZ));
 		//OutputDebugString(strTime);
-
 	}
 	dwTime = timeGetTime();
 	strTime.Format(_T("PlayDuration %d\n"), (dwTime - dwTimeZ));
 	OutputDebugString(strTime);
-	strTime.Format(_T("PlayFrame %d\n"), iCount2);
+	strTime.Format(_T("PlayFrame %d\n"), iFrameCount);
 	OutputDebugString(strTime);
-	//timeEndPeriod(1);
 	m_dlgTimelineEditor->OnStop();
 	m_iPlaySpeed = 0;
 
 	m_iTimelineCursorFrame += iCount2;
-	//strTime.Format(_T("PreviewCursor %d\n"), m_iTimelineCursorFrame);
-	//OutputDebugString(strTime);
-	//strTime.Format(_T("EditorCursor %d\n"), m_dlgTimelineEditor->GetTimelineCursorFrame());
-	//OutputDebugString(strTime);
 	ASSERT(m_dlgTimelineEditor->GetTimelineCursorFrame() == m_iTimelineCursorFrame);
 
 	if (m_pWglSwapIntervalEXT)
@@ -567,13 +659,8 @@ BOOL CCtrlUnitPreviewView::SetWglSwapIntervalEXT(void)
 }
 
 // 暫定　全画面表示時の画面描画
-void CCtrlUnitPreviewView::DrawFullScreen(int iPlaySpeed, int iCount, CRect& rcRect)
+void CCtrlUnitPreviewView::DrawFullScreen(int iPlaySpeed, int iCount, int iFrame, CRect& rcRect)
 {
-	//CString strTime;
-	//DWORD dwTimeW = timeGetTime();
-	//strTime.Format(_T("c%d\n"), dwTimeW);
-	//OutputDebugString(strTime);
-
 	CRect rcClientRect;
 	GetClientRect(rcClientRect);
 
@@ -583,10 +670,6 @@ void CCtrlUnitPreviewView::DrawFullScreen(int iPlaySpeed, int iCount, CRect& rcR
 	//std::mt19937 gen(1729);
 	std::uniform_int_distribution<> pos(-3, 3);
 
-	rcRect.left += pos(mt);
-	rcRect.right += pos(mt);
-	rcRect.top += pos(mt);
-	rcRect.bottom += pos(mt);
 
 	wglMakeCurrent(m_pDC->GetSafeHdc(), m_hRC);
 
@@ -607,7 +690,7 @@ void CCtrlUnitPreviewView::DrawFullScreen(int iPlaySpeed, int iCount, CRect& rcR
 	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), m_pDC->GetSafeHdc(), hfDrawFont, WHITECOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
 
-	strFrameNumber.Format(_T("Play Frame %d"), iCount);
+	strFrameNumber.Format(_T("Play Frame %d"), iFrame);
 	ChangeScreenPointToOpenGLPoint(100, 160, rcClientRect.Height(), dPointX, dPointY);
 	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), m_pDC->GetSafeHdc(), hfDrawFont, WHITECOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
@@ -615,6 +698,27 @@ void CCtrlUnitPreviewView::DrawFullScreen(int iPlaySpeed, int iCount, CRect& rcR
 	ChangeScreenPointToOpenGLPoint(100, 190, rcClientRect.Height(), dPointX, dPointY);
 	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), m_pDC->GetSafeHdc(), hfDrawFont, WHITECOLOR_BRUSH_FLOAT,
 		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
+
+	if (iPlaySpeed == 0)
+	{
+		strFrameNumber = _T("Pause");
+		ChangeScreenPointToOpenGLPoint(100, 220, rcClientRect.Height(), dPointX, dPointY);
+		DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), m_pDC->GetSafeHdc(), hfDrawFont, WHITECOLOR_BRUSH_FLOAT,
+			static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
+	}
+	else
+	{
+		strFrameNumber = _T("Play");
+		ChangeScreenPointToOpenGLPoint(100, 220, rcClientRect.Height(), dPointX, dPointY);
+		DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), m_pDC->GetSafeHdc(), hfDrawFont, WHITECOLOR_BRUSH_FLOAT,
+			static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
+
+		rcRect.left += pos(mt);
+		rcRect.right += pos(mt);
+		rcRect.top += pos(mt);
+		rcRect.bottom += pos(mt);
+
+	}
 	DeleteObject(hfDrawFont);
 
 	float red = static_cast<float>(color(mt));
@@ -631,7 +735,6 @@ void CCtrlUnitPreviewView::DrawFullScreen(int iPlaySpeed, int iCount, CRect& rcR
 	if (green < -1.0){ green = -1.0; }
 	if (alpha < -1.0){ alpha = -1.0; }
 
-
 	glLineWidth(1);
 	glColor4f(red, green, blue, 1.0f);
 	glBegin(GL_QUADS);
@@ -641,25 +744,68 @@ void CCtrlUnitPreviewView::DrawFullScreen(int iPlaySpeed, int iCount, CRect& rcR
 	glVertex2i(rcRect.left, rcRect.bottom);
 	glEnd();
 
-
 	//glFlush();
 	SwapBuffers(m_pDC->GetSafeHdc());
 	//glFinish();
 
-	// TODO: ここはメッセージ？
-	m_dlgTimelineEditor->OnPlay(iPlaySpeed);
-	//DWORD dwTime = timeGetTime();
-	//strTime.Format(_T("write %d\n"), dwTime);
-	//OutputDebugString(strTime);
-
-
 	wglMakeCurrent(NULL, NULL);
 
-	//m_fThread = FALSE;
-
+	// TODO: ここはメッセージ？
+	if (iPlaySpeed != 0)
+	{
+		m_dlgTimelineEditor->OnPlay(iPlaySpeed);
+	}
 }
 
 
+
+// 全画面（停止）時の描画
+void CCtrlUnitPreviewView::DrawFullScreen(CDC& dc)
+{
+	CRect rcClientRect;
+	GetClientRect(rcClientRect);
+
+	wglMakeCurrent(m_pDC->GetSafeHdc(), m_hRC);
+
+	// 背景塗りつぶし
+	glClearColor(PREVIEW_FULLSCREEN_BASE_BRUSH);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// タイムコード表示
+	CString strFrameNumber;
+	double dPointX, dPointY;
+	HFONT hfDrawFont;
+	strFrameNumber.Format(_T("Timeline Cursor Frame %d"), m_iTimelineCursorFrame);
+	CreateDrawFont(30, 0, DEFAULT_FONTFACE, hfDrawFont);
+	ChangeScreenPointToOpenGLPoint(100, 100, rcClientRect.Height(), dPointX, dPointY);
+	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), m_pDC->GetSafeHdc(), hfDrawFont, WHITECOLOR_BRUSH_FLOAT,
+		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
+
+	m_pTimecodeOperator->ChangeFrameToTimecode(m_iTimelineCursorFrame, strFrameNumber, DF_MODE);
+	ChangeScreenPointToOpenGLPoint(430, 130, rcClientRect.Height(), dPointX, dPointY);
+	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), m_pDC->GetSafeHdc(), hfDrawFont, WHITECOLOR_BRUSH_FLOAT,
+		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
+
+	strFrameNumber.Format(_T("Play Frame %d"), 0);
+	ChangeScreenPointToOpenGLPoint(100, 160, rcClientRect.Height(), dPointX, dPointY);
+	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), m_pDC->GetSafeHdc(), hfDrawFont, WHITECOLOR_BRUSH_FLOAT,
+		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
+	strFrameNumber.Format(_T("Play Speed x%d"), 0);
+	ChangeScreenPointToOpenGLPoint(100, 190, rcClientRect.Height(), dPointX, dPointY);
+	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), m_pDC->GetSafeHdc(), hfDrawFont, WHITECOLOR_BRUSH_FLOAT,
+		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
+
+	strFrameNumber = _T("Stop");
+	ChangeScreenPointToOpenGLPoint(100, 220, rcClientRect.Height(), dPointX, dPointY);
+	DrawTextOnGL(static_cast<PCTSTR>(strFrameNumber), m_pDC->GetSafeHdc(), hfDrawFont, WHITECOLOR_BRUSH_FLOAT,
+		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
+	DeleteObject(hfDrawFont);
+
+	glFlush();
+	SwapBuffers(m_pDC->GetSafeHdc());
+
+	wglMakeCurrent(NULL, NULL);
+}
 
 // 非全画面時の描画
 void CCtrlUnitPreviewView::DrawSmallScreen(CDC& dc)
@@ -676,6 +822,7 @@ void CCtrlUnitPreviewView::DrawSmallScreen(CDC& dc)
 
 	DrawPlayButton(dc, iHeight);
 	DrawStopButton(dc, iHeight);
+	DrawFullScreenButton(dc, iHeight);
 	DrawTimelineEditorButton(dc, iHeight);
 
 	// タイムコード表示
@@ -754,6 +901,29 @@ void CCtrlUnitPreviewView::DrawStopButton(CDC& dc, int iHeight)
 
 }
 
+// 全画面表示ボタン描画
+void CCtrlUnitPreviewView::DrawFullScreenButton(CDC& dc, int iHeight)
+{
+	m_pFullScreenButton->DrawMyFillRect();
+
+	CString strButtonName;
+	double dPointX, dPointY;
+	HFONT hfDrawFont;
+	CreateDrawFont(BUTTON_FONTSIZE, 0, BUTTON_FONTFACE, hfDrawFont);
+	int iFontX = m_pFullScreenButton->left + 5,
+		iFontY = m_pFullScreenButton->bottom - 8;
+
+	strButtonName = FULLSCREENBUTTON_NAME;
+	ChangeScreenPointToOpenGLPoint(iFontX + BUTTON_FONTSHADOW_WIDTH, iFontY + BUTTON_FONTSHADOW_WIDTH, iHeight, dPointX, dPointY);
+	DrawTextOnGL(static_cast<PCTSTR>(strButtonName), dc.GetSafeHdc(), hfDrawFont, BUTTON_FONTSHADOW_BRUSH,
+		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
+	ChangeScreenPointToOpenGLPoint(iFontX, iFontY, iHeight, dPointX, dPointY);
+	DrawTextOnGL(static_cast<PCTSTR>(strButtonName), dc.GetSafeHdc(), hfDrawFont, BUTTON_FONT_BRUSH,
+		static_cast<float>(dPointX), static_cast<float>(dPointY), TIMELINE_DEFAULTZ, 1.0f);
+	DeleteObject(hfDrawFont);
+
+}
+
 // タイムラインエディタ表示ボタン描画
 void CCtrlUnitPreviewView::DrawTimelineEditorButton(CDC& dc, int iHeight)
 {
@@ -822,6 +992,11 @@ void CCtrlUnitPreviewView::SetButtonRect(void)
 	m_pStopButton->left = m_pPlayButton->right + 1;
 	m_pStopButton->right = m_pStopButton->left + PREVIEWBUTTON_SIZE;
 	m_pStopButton->SetVert(iViewHeight);
+
+	m_pFullScreenButton->CopyRect(static_cast<CRect>(m_pTimelineEditorButton));
+	m_pFullScreenButton->left = m_pStopButton->right + 1;
+	m_pFullScreenButton->right = m_pFullScreenButton->left + PREVIEWBUTTON_SIZE;
+	m_pFullScreenButton->SetVert(iViewHeight);
 }
 
 // タイムラインエディターの表示切替
@@ -845,7 +1020,14 @@ void CCtrlUnitPreviewView::SetTimelineCursorFrame(int iFrame)
 	m_iTimelineCursorFrame = iFrame;
 
 	CDC* pDC = GetDC();
-	DrawSmallScreen(*pDC);
+	if ((!m_pMainFrame->GetScreenMode()) && !m_fPlay)
+	{
+		DrawSmallScreen(*pDC);
+	}
+	else
+	{
+		DrawFullScreen(*pDC);
+	}
 	ReleaseDC(pDC);
 
 }

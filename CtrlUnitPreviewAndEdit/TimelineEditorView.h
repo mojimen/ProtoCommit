@@ -128,8 +128,8 @@ private:
 	BOOL DrawOperatingClip(const CDC& dcDC, const int& iHeight);
 	BOOL DrawDragAndDropClip(const CDC& dcDC, const int& iHeight);
 	BOOL DrawTimelineCursor(const CDC& dcDC, const int& iHeight);
+	void TimelineEditorView::DrawJumpFrame(int iMoveFrame, int iMoveDitance);
 	//void DrawShuttleGuideLine(CDC& dcMemDc, CDC& dcMovingMemDc, BLENDFUNCTION& blAlphaBlend, CRect& rcShuttleLineRect, float fGuideAreaWidth);
-	//void DrawAnimation(const int iFrame);
 
 	// ï\é¶à íuåvéZ
 	void SetPanelRect(void);
@@ -156,6 +156,8 @@ public:
 	afx_msg void OnTransitionResetOutCenter(void);
 	afx_msg void OnTransitionResetOutStart(void);
 	afx_msg void OnTransitionResetOutEnd(void);
+	afx_msg void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
+
 	void OnPlay(int iSpeed);
 	void OnStop(void);
 	int GetTimelineCursorFrame(void);
@@ -163,5 +165,5 @@ public:
 	void SetMainWnd(CWnd* pWnd) { m_pMainWnd = pWnd; }
 	void SetParentDialog(TimelineEditorDialog* pDlg) { m_pParentDialog = pDlg; }
 
-	afx_msg void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
+	afx_msg LRESULT OnNcHitTest(CPoint point);
 };

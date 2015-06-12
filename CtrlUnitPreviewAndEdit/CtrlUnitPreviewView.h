@@ -64,10 +64,12 @@ private:
 
 	OpenGLRect* m_pPlayButton;
 	OpenGLRect* m_pStopButton;
+	OpenGLRect* m_pFullScreenButton;
 	OpenGLRect* m_pTimelineEditorButton;
 
 	int m_iTimelineCursorFrame;
 	int m_iPlaySpeed;
+	int m_iLastPlaySpeed;
 
 	BOOL m_fPlay;
 	//BOOL m_fThread;
@@ -87,24 +89,34 @@ public:
 	afx_msg void OnHideEditor(void);
 	afx_msg void OnChangeTimelineCursor(void);
 
+	void SetSmallScreen(void);
+	void ChangeScreenSize(void);
+
 	// 再生機能
-	void ChangePlay(void);
+	void ChangePlay(const int iNumerator = 1, const int iDenominator = 1);
+	void ChangePlaySpeed(const int& iNumerator, const int& iDenominator);
+	void ChangePlaySpeed(const int& iSpeed);
+	void PausePlay(void);
 	void Play(BOOL fOdd = TRUE);
 	
 	// TODO: OpenGLViewに移設
 	BOOL SetWglSwapIntervalEXT(void);
 
 	// 描画関連
-	void DrawFullScreen(int iPlaySpeed, int iCount, CRect& rcRect);
+	void DrawFullScreen(int iPlaySpeed, int iCount, int iFrame, CRect& rcRect);
+	void DrawFullScreen(CDC& dc);
 	void DrawSmallScreen(CDC& dc);
 	void DrawPlayButton(CDC& dc, int iHeight);
 	void DrawStopButton(CDC& dc, int iHeight);
+	void DrawFullScreenButton(CDC& dc, int iHeight);
 	void DrawTimelineEditorButton(CDC& dc, int iHeight);
 	void SetButtonRect(void);
 
 	// タイムラインエディター同期関連
 	void ChangeDisplayTimelineEditor(void);
 	void SetTimelineCursorFrame(int iFrame);
+
+	void KeyUp(UINT nChar, UINT nRepCnt, UINT nFlags) { OnKeyUp(nChar, nRepCnt, nFlags); }
 
 };
 

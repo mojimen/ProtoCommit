@@ -41,8 +41,15 @@ public:
 	CWnd* GetMainWnd(void) { return m_pParentWnd; }
 	void SetMainView(CCtrlUnitPreviewView* pView) { m_pMainView = pView; }
 	void SetTimelineCursorFrame(int iFrame);
-	void ChangePlay(void);
+	void ChangePlay(const int iNumerator = 1, const int iDenominator = 1);
+	void ChangePlaySpeed(const int& iNumerator, const int& iDenominator);
+	void PlaySpeedUp(const int iSpeed = 1);
+	void PlaySpeedDown(const int iSpeed = 1);
+	void PausePlay(void);
+	void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
 
 	virtual void OnCancel();
 	virtual void OnOK();
+	afx_msg void OnNcPaint();
+	//afx_msg LRESULT OnNcHitTest(CPoint point);
 };

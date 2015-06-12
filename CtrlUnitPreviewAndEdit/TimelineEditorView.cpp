@@ -64,6 +64,8 @@ BEGIN_MESSAGE_MAP(TimelineEditorView, OpenGLView)
 	ON_COMMAND(ID_TRANSITION_RESET_OUT_END, &TimelineEditorView::OnTransitionResetOutEnd)
 	ON_WM_MOUSEWHEEL()
 	ON_WM_KEYUP()
+	ON_WM_NCHITTEST()
+	ON_WM_NCHITTEST()
 END_MESSAGE_MAP()
 
 // TimelineEditorView 描画
@@ -159,6 +161,7 @@ void TimelineEditorView::OnLButtonDown(UINT nFlags, CPoint point)
 	if (fRet)
 	{
 		Invalidate();
+		UpdateWindow();
 	}
 	if (m_pTimelineDataOperator->IsLButtonDown())
 	{
@@ -170,14 +173,29 @@ void TimelineEditorView::OnLButtonDown(UINT nFlags, CPoint point)
 void TimelineEditorView::OnLButtonUp(UINT nFlags, CPoint point)
 {
 	// TODO: ここにメッセージ ハンドラー コードを追加するか、既定の処理を呼び出します。
-
-	BOOL fRet = m_pTimelineDataOperator->OnLButtonUp(nFlags, point);
+	BOOL fStopPlay = FALSE;
+	BOOL fRet = m_pTimelineDataOperator->OnLButtonUp(nFlags, point, fStopPlay);
 	m_pOperatingClipData = m_pTimelineDataOperator->GetOperatingClipData();
 	if (fRet)
 	{
-		Invalidate();
-		m_pParentDialog->SetTimelineCursorFrame(m_pTimelineDataOperator->GetOperatingTimelineCursorFramePosition());
-		//m_pMainWnd->PostMessageW(WM_COMMAND, MAKEWPARAM(ID_CHANGE_TIMELINECURSOR, 0), NULL);
+		if (fStopPlay && m_pTimelineDataOperator->IsPlaying())
+		{
+			m_pParentDialog->ChangePlay();
+		}
+		else
+		{
+			if (m_pTimelineDataOperator->IsJumpFrame())
+			{
+				DrawJumpFrame(m_pTimelineDataOperator->GetJumpFrameCount(), (point.x - m_iTimelineCursorPoint));
+			}
+			else
+			{
+				m_pParentDialog->SetTimelineCursorFrame(m_pTimelineDataOperator->GetOperatingTimelineCursorFramePosition());
+				Invalidate();
+				UpdateWindow();
+			}
+			//m_pMainWnd->PostMessageW(WM_COMMAND, MAKEWPARAM(ID_CHANGE_TIMELINECURSOR, 0), NULL);
+		}
 	}
 	ReleaseCapture();
 }
@@ -188,6 +206,7 @@ void TimelineEditorView::OnRButtonUp(UINT nFlags, CPoint point)
 	if (m_pTimelineDataOperator->OnRButtonUp(nFlags, point))
 	{
 		Invalidate();
+		UpdateWindow();
 	}
 	else
 	{
@@ -200,13 +219,27 @@ void TimelineEditorView::OnRButtonUp(UINT nFlags, CPoint point)
 void TimelineEditorView::OnMouseMove(UINT nFlags, CPoint point)
 {
 	// TODO: ここにメッセージ ハンドラー コードを追加するか、既定の処理を呼び出します。
-
-	if (m_pTimelineDataOperator->OnMouseMove(nFlags, point))
+	BOOL fStartPlay = FALSE;
+	if (m_pTimelineDataOperator->OnMouseMove(nFlags, point, fStartPlay))
 	{
-		Invalidate();
-		UpdateWindow();
-		m_pParentDialog->SetTimelineCursorFrame(m_pTimelineDataOperator->GetOperatingTimelineCursorFramePosition());
-		//m_pMainWnd->PostMessageW(WM_COMMAND, MAKEWPARAM(ID_CHANGE_TIMELINECURSOR, 0), NULL);
+		if (fStartPlay)
+		{
+			if (!(m_pTimelineDataOperator->IsPlaying()))
+			{
+				m_pParentDialog->ChangePlay(m_pTimelineDataOperator->GetShuttleSpeedNumerator(), m_pTimelineDataOperator->GetShuttleSpeedDenominator());
+			}
+			else
+			{
+				m_pParentDialog->ChangePlaySpeed(m_pTimelineDataOperator->GetShuttleSpeedNumerator(), m_pTimelineDataOperator->GetShuttleSpeedDenominator());
+			}
+		}
+		else if (!(m_pTimelineDataOperator->IsDragShuttle()))
+		{
+			Invalidate();
+			UpdateWindow();
+			m_pParentDialog->SetTimelineCursorFrame(m_pTimelineDataOperator->GetOperatingTimelineCursorFramePosition());
+			//m_pMainWnd->PostMessageW(WM_COMMAND, MAKEWPARAM(ID_CHANGE_TIMELINECURSOR, 0), NULL);
+		}
 	}
 	m_pOperatingClipData = m_pTimelineDataOperator->GetOperatingClipData();
 }
@@ -286,6 +319,7 @@ void TimelineEditorView::OnDropFiles(HDROP hDropInfo)
 		OutputDebugString(strFileName + "\n");
 		GetParent()->SetForegroundWindow();
 		Invalidate();
+		UpdateWindow();
 	}
 	else
 	{
@@ -299,10 +333,12 @@ DROPEFFECT TimelineEditorView::OnDragEnter(COleDataObject* pDataObject, DWORD dw
 	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
 
 	m_pTimelineDataOperator->OnDragEnter(pDataObject, dwKeyState, point);
+	m_pParentDialog->SetForegroundWindow();
 	if (m_pTimelineDataOperator->EnableDrawDragRect())
 	{
-		return DROPEFFECT_COPY;
 		Invalidate();
+		UpdateWindow();
+		return DROPEFFECT_COPY;
 	}
 	return DROPEFFECT_NONE;
 }
@@ -314,6 +350,7 @@ void TimelineEditorView::OnDragLeave()
 
 	m_pTimelineDataOperator->OnDragLeave();
 	Invalidate();
+	UpdateWindow();
 }
 
 // ドラッグ移動
@@ -322,6 +359,7 @@ DROPEFFECT TimelineEditorView::OnDragOver(COleDataObject* pDataObject, DWORD dwK
 	// TODO: ここに特定なコードを追加するか、もしくは基底クラスを呼び出してください。
 
 	Invalidate();
+	UpdateWindow();
 	return m_pTimelineDataOperator->OnDragOver(pDataObject, dwKeyState, point);
 }
 
@@ -338,16 +376,76 @@ DROPEFFECT TimelineEditorView::OnDragOver(COleDataObject* pDataObject, DWORD dwK
 BOOL TimelineEditorView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 {
 	// TODO: ここにメッセージ ハンドラー コードを追加するか、既定の処理を呼び出します。
-
+	BOOL fCursorChange = FALSE;
 	CPoint poPoint = pt;
 	ScreenToClient(&poPoint);
-	if (m_pTimelineDataOperator->OnMouseWheel(nFlags, zDelta, poPoint))
+	if (m_pTimelineDataOperator->OnMouseWheel(nFlags, zDelta, poPoint, fCursorChange))
 	{
+		if (fCursorChange)
+		{
+			m_pParentDialog->SetTimelineCursorFrame(m_pTimelineDataOperator->GetTimelineCursorFramePosition());
+		}
 		Invalidate();
+		UpdateWindow();
 	}
 
 	return TRUE;
 }
+
+// キー操作
+void TimelineEditorView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
+{
+	// TODO: ここにメッセージ ハンドラー コードを追加するか、既定の処理を呼び出します。
+
+	m_pParentDialog->OnKeyUp(nChar, nRepCnt, nFlags);
+
+	//switch (nChar)
+	//{
+
+	//case VK_SPACE:
+	//	if (!(m_pTimelineDataOperator->IsPlaying()))
+	//	{
+	//		m_pParentDialog->ChangePlay();
+	//	}
+	//	else
+	//	{
+	//		m_pParentDialog->PausePlay();
+	//	}
+	//	break;
+
+	//case VK_RETURN:
+	//	m_pParentDialog->ChangePlay();
+	//	break;
+
+	//case VK_ESCAPE:
+	//	if (m_pTimelineDataOperator->IsPlaying())
+	//	{
+	//		m_pParentDialog->ChangePlay();
+	//	}
+	//	break;
+
+	//case VK_PRIOR:
+	//	if (m_pTimelineDataOperator->IsPlaying())
+	//	{
+	//		m_pParentDialog->PlaySpeedUp();
+	//	}
+	//	break;
+
+	//case VK_NEXT:
+	//	if (m_pTimelineDataOperator->IsPlaying())
+	//	{
+	//		m_pParentDialog->PlaySpeedDown();
+	//	}
+	//	break;
+
+	//default:
+	//	break;
+
+	//}
+
+	//OpenGLView::OnKeyUp(nChar, nRepCnt, nFlags);
+}
+
 
 
 
@@ -845,9 +943,31 @@ BOOL TimelineEditorView::DrawDragAndDropClip(const CDC& dcDC, const int& iHeight
 // タイムラインカーソルの描画を行う
 BOOL TimelineEditorView::DrawTimelineCursor(const CDC& dcDC, const int& iHeight)
 {
-	// ラインを描画
-	DrawLine(iHeight, m_iTimelineCursorPoint, m_pSeekBarRect->top, m_iTimelineCursorPoint, m_pTimelineDataRect->bottom,
-		TIMELINECURSOR_LINEWIDTH, TIMELINECURSORCOLOR_BRUSH_FLOAT);
+	// ジャンプフレーム時の基準線を描画
+	//if ((m_pTimelineDataOperator->IsScrub()) && (m_pTimelineDataOperator->GetJumpFrameCursorPosition() != 0))
+	//{
+	//	int iPosition = m_pTimelineDataOperator->ChangeTimelineFramePositionToDisplayPoint(m_pTimelineDataOperator->GetJumpFrameCursorPosition());
+	//	DrawLine(iHeight, iPosition, m_pSeekBarRect->top, iPosition, m_pTimelineDataRect->bottom,
+	//		JUMPFRAMETIMELINECURSOR_LINEWIDTH, JUMPFRAMETIMELINECURSORCOLOR_BRUSH_FLOAT);
+	//	DrawLine(iHeight, m_iTimelineCursorPoint, m_pSeekBarRect->top, m_iTimelineCursorPoint, m_pTimelineDataRect->bottom,
+	//		TIMELINECURSOR_LINEWIDTH, TIMELINECURSORCOLOR_BRUSH_FLOAT);
+	//}
+	//else
+	//{
+	//	if ((m_pTimelineDataOperator->IsJumpFrame()))		
+	//	{
+	//		int iPosition = m_pTimelineDataOperator->ChangeTimelineFramePositionToDisplayPoint(m_pTimelineDataOperator->GetJumpFrameCursorPosition());
+	//		DrawLine(iHeight, iPosition, m_pSeekBarRect->top, iPosition, m_pTimelineDataRect->bottom,
+	//			TIMELINECURSOR_LINEWIDTH, TIMELINECURSORCOLOR_BRUSH_FLOAT);
+	//	}
+	//	else
+	//	{
+			// ラインを描画
+			DrawLine(iHeight, m_iTimelineCursorPoint, m_pSeekBarRect->top, m_iTimelineCursorPoint, m_pTimelineDataRect->bottom,
+				TIMELINECURSOR_LINEWIDTH, TIMELINECURSORCOLOR_BRUSH_FLOAT);
+	//	}
+	//}
+
 
 	//if (m_fDragShuttling)
 	//{
@@ -876,6 +996,45 @@ BOOL TimelineEditorView::DrawTimelineCursor(const CDC& dcDC, const int& iHeight)
 
 	return TRUE;
 }
+
+// ジャンプフレーム時のスクロールを行う
+void TimelineEditorView::DrawJumpFrame(int iMoveFrame, int iMoveDitance)
+{
+	int iMoveLength = 0, iMoveCount = 1;
+	if (abs(iMoveDitance) > 500)
+	{
+		iMoveCount = 25;
+	}
+	else if (abs(iMoveDitance) > 100)
+	{
+		iMoveCount = abs(static_cast<int>(ceil(iMoveDitance / 35.0))) + 10;
+	}
+	else if (abs(iMoveDitance) > 10)
+	{
+		iMoveCount = abs(static_cast<int>(ceil(iMoveDitance / 30.0))) + 10;
+	}
+	else
+	{
+		iMoveCount = abs(iMoveDitance);
+	}
+	for (int i = iMoveCount; i > 0; --i)
+	{
+		iMoveLength = static_cast<int>(ceil(iMoveFrame / i));
+		m_pTimelineDataOperator->MoveTimelineCursor(iMoveLength);
+		m_pParentDialog->SetTimelineCursorFrame(m_pTimelineDataOperator->GetTimelineCursorFramePosition());
+		Invalidate();
+		UpdateWindow();
+		Sleep(0);
+		iMoveFrame -= iMoveLength;
+	}
+	m_pTimelineDataOperator->MoveTimelineCursor(iMoveFrame);
+	Invalidate();
+	UpdateWindow();
+	m_pParentDialog->SetTimelineCursorFrame(m_pTimelineDataOperator->GetTimelineCursorFramePosition());
+	m_pTimelineDataOperator->ResetJumpFrame();
+	m_pTimelineDataOperator->ClearJumpFramecount();
+}
+
 
 //// シャトル操作時のガイドラインを表示する
 //void TimelineEditorView::DrawShuttleGuideLine(CDC& dcMemDc, CDC& dcMovingMemDc, BLENDFUNCTION& blAlphaBlend, CRect& rcLineRect, float fGuideAreaWidth)
@@ -917,7 +1076,11 @@ void TimelineEditorView::SetPanelRect(void)
 {
 	CRect rcViewRect;
 	GetClientRect(&rcViewRect);
-	double dLeft = 0.0, dRight = 0.0, dTop = 0.0, dBottom = 0.0;
+	//rcViewRect.left += WINDOWBORDER_THICKNESS;
+	//rcViewRect.right -= WINDOWBORDER_THICKNESS;
+	//rcViewRect.top += WINDOWBORDER_THICKNESS;
+	//rcViewRect.bottom -= WINDOWBORDER_THICKNESS;
+	//double dLeft = 0.0, dRight = 0.0, dTop = 0.0, dBottom = 0.0;
 
 	float fViewHeight = static_cast<float>(rcViewRect.Height());
 	long lViewHeight = static_cast<long>(floor((fViewHeight - static_cast<float>(m_pSeekBarRect->Height())) / 2));
@@ -1089,6 +1252,7 @@ void TimelineEditorView::OnClipDelete(void)
 	if (m_pTimelineDataOperator->DeleteClip())
 	{
 		Invalidate();
+		UpdateWindow();
 	}
 }
 
@@ -1101,6 +1265,7 @@ void TimelineEditorView::OnTransitionSetIn(void)
 	if (m_pTimelineDataOperator->OnTransitionSetIn(static_cast<PCTSTR>(strMessage)))
 	{
 		Invalidate();
+		UpdateWindow();
 	}
 }
 
@@ -1113,6 +1278,7 @@ void TimelineEditorView::OnTransitionSetOut(void)
 	if (m_pTimelineDataOperator->OnTransitionSetOut(static_cast<PCTSTR>(strMessage)))
 	{
 		Invalidate();
+		UpdateWindow();
 	}
 }
 
@@ -1123,6 +1289,7 @@ void TimelineEditorView::OnTransitionResetInCenter(void)
 	if (m_pTimelineDataOperator->OnTransitionResetInCenter())
 	{
 		Invalidate();
+		UpdateWindow();
 	}
 }
 
@@ -1133,6 +1300,7 @@ void TimelineEditorView::OnTransitionResetInStart(void)
 	if (m_pTimelineDataOperator->OnTransitionResetInStart())
 	{
 		Invalidate();
+		UpdateWindow();
 	}
 }
 
@@ -1143,6 +1311,7 @@ void TimelineEditorView::OnTransitionResetInEnd(void)
 	if (m_pTimelineDataOperator->OnTransitionResetInEnd())
 	{
 		Invalidate();
+		UpdateWindow();
 	}
 }
 
@@ -1153,6 +1322,7 @@ void TimelineEditorView::OnTransitionResetOutCenter(void)
 	if (m_pTimelineDataOperator->OnTransitionResetOutCenter())
 	{
 		Invalidate();
+		UpdateWindow();
 	}
 }
 
@@ -1163,6 +1333,7 @@ void TimelineEditorView::OnTransitionResetOutStart(void)
 	if (m_pTimelineDataOperator->OnTransitionResetOutStart())
 	{
 		Invalidate();
+		UpdateWindow();
 	}
 }
 
@@ -1173,6 +1344,7 @@ void TimelineEditorView::OnTransitionResetOutEnd(void)
 	if (m_pTimelineDataOperator->OnTransitionResetOutEnd())
 	{
 		Invalidate();
+		UpdateWindow();
 	}
 }
 
@@ -1182,6 +1354,8 @@ void TimelineEditorView::OnPlay(int iSpeed)
 	if (m_pTimelineDataOperator->OnPlay(iSpeed))
 	{
 		Invalidate();
+		// 再生が間に合わなくなるのでUpdateWindowはしない
+		//UpdateWindow();
 	}
 }
 
@@ -1198,30 +1372,18 @@ int TimelineEditorView::GetTimelineCursorFrame(void)
 }
 
 
-// キー操作
-void TimelineEditorView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
+
+
+
+LRESULT TimelineEditorView::OnNcHitTest(CPoint point)
 {
 	// TODO: ここにメッセージ ハンドラー コードを追加するか、既定の処理を呼び出します。
+	CRect rcRect;
+	GetClientRect(&rcRect);
 
-	switch (nChar)
-	{
-
-	case VK_SPACE:
-	case VK_RETURN:
-		m_pParentDialog->ChangePlay();
-		break;
-
-	case VK_ESCAPE:
-		if (m_pTimelineDataOperator->IsPlaying())
-		{
-			m_pParentDialog->ChangePlay();
-		}
-		break;
-
-	default:
-		break;
-
-	}
-
-	OpenGLView::OnKeyUp(nChar, nRepCnt, nFlags);
+	//if (point.x < rcRect.left + WINDOWBORDER_THICKNESS)
+	//{
+		//return HTLEFT;
+	//}
+	return OpenGLView::OnNcHitTest(point);
 }

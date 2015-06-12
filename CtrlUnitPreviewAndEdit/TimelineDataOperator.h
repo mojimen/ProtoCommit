@@ -64,6 +64,7 @@ private:
 	BOOL m_fAllowDrop;					// Drag&Drop操作可否
 	BOOL m_fPreviewWork;				// プレビュー動作中
 	BOOL m_fPlay;						// 再生中
+	BOOL m_fJumpFrame;					// ジャンプフレーム時のアニメーション動作要
 
 	// タイムラインデータ管理
 	TimelineDataManager* m_pTimelineDataManager;
@@ -97,6 +98,10 @@ private:
 	int m_iEnableMovingFrameCount;		// Move操作中に移動が可能であった直近の移動フレーム数
 	TrackDataRect* m_pEnableMovingTrack;// Move操作中に移動が可能であった直近のトラック位置
 	int m_iPlayFrameCount;				// 再生中の再生済みフレーム数
+	int m_iJumpFrameCount;				// ジャンプフレーム時の移動フレーム数
+	int m_iJumpFrameCursorPosition;		// ジャンプフレーム時の移動フレーム数
+	int m_iShuttleSpeedNumerator;		// シャトル再生時のスピード（分子）
+	int m_iShuttleSpeedDenominator;		// シャトル再生時のスピード（分母）
 
 	int m_iFramePerPoint;				// １ポイントあたりのフレーム数
 	int m_iPointPerFrame;				// １フレームあたりのポイント数
@@ -110,9 +115,9 @@ public:
 	BOOL InitializeTimelineDataOperator(UUID& uiTimelineDataOperatorId);
 	void DeleteTimelineDataOperator(void);
 	BOOL OnLButtonDown(UINT nFlags, CPoint point);	//Lボタンの処理
-	BOOL OnLButtonUp(UINT nFlags, CPoint point);	//Lボタンの処理
+	BOOL OnLButtonUp(UINT nFlags, CPoint point, BOOL& fStopPlay);	//Lボタンの処理
 	BOOL OnRButtonUp(UINT nFlags, CPoint point);	//Lボタンの処理
-	BOOL OnMouseMove(UINT nFlags, CPoint point);	//マウス移動時の処理
+	BOOL OnMouseMove(UINT nFlags, CPoint point, BOOL& fStartPlay);	//マウス移動時の処理
 	BOOL OnDropFiles(const HDROP& hDropInfo, CString& strFileName);
 	BOOL OnDragEnter(COleDataObject* pDataObject, DWORD dwKeyState, const CPoint& point);
 	void OnDragLeave(void);
@@ -127,7 +132,7 @@ public:
 	BOOL OnTransitionResetOutCenter(void);
 	BOOL OnTransitionResetOutStart(void);
 	BOOL OnTransitionResetOutEnd(void);
-	BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint poPoint);
+	BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint poPoint, BOOL& fCursorChange);
 
 	// プレビュー連動
 	BOOL OnPlay(int iSpeed);
@@ -187,6 +192,8 @@ public:
 	BOOL EnableDrawDragRect(void){ return m_fDragAndDrop && m_fAllowFile && m_fAllowDrop; }
 	BOOL IsPlaying(void) { return m_fPlay; }
 	BOOL IsPreviewWorking(void) { return m_fPreviewWork; }
+	BOOL IsJumpFrame(void) { return m_fJumpFrame; }
+	void ResetJumpFrame(void) { m_fJumpFrame = FALSE; }
 
 	int GetTimelineCursorFramePosition(void){ return m_iTimelineCursorFramePosition; }
 	int GetLeftFrameNumber(void){ return m_iLeftFrameNumber; }
@@ -206,6 +213,10 @@ public:
 	int GetMiddleScaleDrawInterval(void){ return m_iMiddleScaleDrawInterval; }
 	int GetBigScaleDrawInterval(void){ return m_iBigScaleDrawInterval; }
 	int GetTimelineCursorPoint(void){ return m_iTimelineCursorPoint; }
+	int GetJumpFrameCount(void){ return m_iJumpFrameCount; }
+	int GetJumpFrameCursorPosition(void){ return m_iJumpFrameCursorPosition; }
+	int GetShuttleSpeedNumerator(void){ return m_iShuttleSpeedNumerator; }
+	int GetShuttleSpeedDenominator(void){ return m_iShuttleSpeedDenominator; }
 
 	ClipDataRect* GetOperatingClipData(void){ return m_pOperatingClipData; }
 	ClipDataRect* GetDragAndDropClipDataRect(void){ return m_pDnDClipDataRect; }
@@ -218,6 +229,9 @@ public:
 	TrackDataInfo* GetOperateToTrackInfo(void){ return m_pOperateToTrackInfo; }
 
 	void SetRectAroundPoint(ClipDataRect& pClipRect, const POINT point, const int& iInputHeight);
+	void ClearJumpFramecount(void) { m_iJumpFrameCount = 0; }
+	void MoveTimelineCursor(int iLength);
+	BOOL CalcShuttleSpeed(const CPoint& point, const CSize& szMoveSize, int& iNumerator, int& iDenominator);
 
 	BOOL DeleteClip(void);
 	CMenu* FindSubMenuFromString(CMenu* pMenu, LPCTSTR pszSearchString, int& nPos);
